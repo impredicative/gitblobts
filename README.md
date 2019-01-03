@@ -5,7 +5,7 @@ It then commits and pushes the file.
 The file is assigned the current nanosecond UTC timestamp as its name.
 The package allows subsequent retrieval of the blobs by a timestamp range.
 
-The package is currently intended for single-threaded single-user use.
+The package does not support multi-user use.
 
 ## Installation
 `pip install gitblobts`
@@ -17,7 +17,7 @@ Storage:
 import gitblobts
 
 store = gitblobts.Store('/path_to/preexisting_git_repo')
-store.add('any blob')
+store.add('any blob', timestamp='3 minutes ago', tz='localtime')
 store.add('another blob')
 ```
 
@@ -26,11 +26,11 @@ Retrieval:
 import gitblobts
 
 store = gitblobts.Store('/path_to/preexisting_git_repo')
-blobs = store.get(start='1 week ago', end='now', tz='localtime')
+blobs = list(store.get(start='1 week ago', end='now', tz='localtime'))
 ```
 
 ## To do
-* Support batching commit+push.
+* Support batching new blobs before commit+push.
 * Support compression.
 * Support encryption.
 * Support asyncio or avoiding waiting for commit+push.
