@@ -1,8 +1,9 @@
 # gitblobts
 
-`gitblobts` stores a blob as a new file in a preexisting local git repo with a remote.
+`gitblobts` is a git-backed time-indexed blob storage package.
+It stores a blob as a new file in a preexisting local git repo with a remote.
 It then commits and pushes the file.
-The file is assigned the current nanosecond UTC timestamp as its name.
+The file is assigned the a nanosecond UTC timestamp as its name.
 The package allows subsequent retrieval of the blobs by a timestamp range.
 
 The package does not support multi-user use.
