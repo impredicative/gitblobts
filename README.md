@@ -18,15 +18,13 @@ Using Python 3.7+, run `pip install gitblobts`.
 
 Storage:
 ```python
-import gitblobts
+import gitblobts, json, time, urllib
 
 store = gitblobts.Store('/path_to/preexisting_git_repo')
-store.add('a byte encoded string'.encode(), timestamp='3 minutes ago')
-store.add(b'some bytes')
-
-import urllib
-blob = urllib.request.urlopen('https://upload.wikimedia.org/wikipedia/en/a/a9/Example.jpg').read()
-store.add(blob)
+store.writeblob(blob='a byte encoded string'.encode())
+store.writeblob(blob=json.dumps([0, 1., 2.2, 3]).encode(), time_utc=time.time())
+store.writeblob(blob=b'some bytes', time_utc=time.gmtime())
+store.writeblob(blob=urllib.request.urlopen('https://upload.wikimedia.org/wikipedia/en/a/a9/Example.jpg').read())
 ```
 
 Retrieval:
@@ -34,7 +32,7 @@ Retrieval:
 import gitblobts
 
 store = gitblobts.Store('/path_to/preexisting_git_repo')
-blobs = list(store.get(start='1 week ago', end='now'))
+blobs = list(store.readblobs(start='1 week ago', end='now'))
 ```
 
 ## To do
