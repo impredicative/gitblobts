@@ -18,7 +18,7 @@ Storage:
 import gitblobts
 
 store = gitblobts.Store('/path_to/preexisting_git_repo')
-store.add('any blob', timestamp='3 minutes ago', tz='localtime')
+store.add('any blob', timestamp='3 minutes ago')
 store.add('another blob')
 ```
 
@@ -27,7 +27,7 @@ Retrieval:
 import gitblobts
 
 store = gitblobts.Store('/path_to/preexisting_git_repo')
-blobs = list(store.get(start='1 week ago', end='now', tz='localtime'))
+blobs = list(store.get(start='1 week ago', end='now'))
 ```
 
 ## To do
