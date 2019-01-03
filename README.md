@@ -18,8 +18,8 @@ Storage:
 import gitblobts
 
 store = gitblobts.Store('/path_to/preexisting_git_repo')
-store.add('any blob', timestamp='3 minutes ago')
-store.add('another blob')
+store.add('a string', timestamp='3 minutes ago')
+store.add(b'some bytes')
 ```
 
 Retrieval:
