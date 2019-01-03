@@ -47,10 +47,13 @@ class Store:
     class TimeUnhandledType(TimeError):
         pass
 
-    def __init__(self, path: Union[str, pathlib.Path]):
+    def __init__(self, path: Union[str, pathlib.Path], multiuser: bool = False):
         self._path = pathlib.Path(path)
         self.repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
         self._check_repo()
+        self._multiuser = multiuser
+        if self._multiuser:
+            self.repo.remote().pull()
 
     def _check_repo(self) -> None:
         repo = self.repo
@@ -65,32 +68,37 @@ class Store:
             raise self.RepoHasUntrackedFiles(f'Repository must not have any untracked files. It has these:\n{names}')
         if not repo.remotes:
             raise self.RepoRemoteNotAdded('Repository must have a remote.')
-        if not repo.remotes().exists():
+        if not repo.remote().exists():
             raise self.RepoRemoteNotExist('Repository remote must exist.')
         # if not self.repo.remote().name == 'origin':
         #     raise self.RemoteRepoError('Repository remote name must be "origin".')
 
-    def _standardize_time(self, time_utc: Optional[Union[float, time.struct_time]] = None) -> int:
+    def _standardize_time_to_ns(self, time_utc: Optional[Union[float, time.struct_time]] = None) -> int:
         def _convert_seconds_to_ns(seconds: Union[int, float]) -> int:
             return int(round(seconds * 1e9))
         if time_utc is None:
-            time_utc_ns = time.time_ns()
+            return time.time_ns()
         elif isinstance(float, time_utc):
-            time_utc_ns = _convert_seconds_to_ns(time_utc)
+            return _convert_seconds_to_ns(time_utc)
         elif isinstance(time_utc, time.struct_time):
             if time_utc.tm_zone != 'UTC':
                 raise self.TimeNotUTC(f"Provided timezone must be UTC, but it's {time_utc.tm_zone}.")
-            time_utc_ns = _convert_seconds_to_ns(calendar.timegm(time_utc))
+            return _convert_seconds_to_ns(calendar.timegm(time_utc))
         else:
             annotation = typing.get_type_hints(self.writeblob)['time_utc']
             raise self.TimeUnhandledType(f'Provided time is of an unhandled type "{type(time_utc)}. '
                                          f'It must be conform to {annotation}.')
-        return time_utc_ns
 
     def writeblob(self, blob: bytes, time_utc: Optional[Union[float, time.struct_time]] = None) -> None:
-        time_utc_ns = self._standardize_time(time_utc)
+        time_utc_ns = self._standardize_time_to_ns(time_utc)
         path = self._path / str(time_utc_ns)
+        if self._multiuser:
+            self.repo.remote().pull()
         path.write_bytes(blob)
+        assert blob == path.read_bytes()
+        self.repo.index.add(path)
+        self.repo.index.commit('')
+        self.repo.remote().push()
 
     def readblobs(self, start, end) -> Iterable[Blob]:
         pass
