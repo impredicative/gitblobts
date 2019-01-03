@@ -9,7 +9,7 @@ The package allows subsequent retrieval of the blobs by a timestamp range.
 The package does not support multi-user use.
 
 ## Installation
-`pip install gitblobts`
+Using Python 3.7+, run `pip install gitblobts`.
 
 ## Usage
 
