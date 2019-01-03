@@ -14,13 +14,25 @@ class Store:
     class RepoError(Exception):
         pass
 
-    class BareRepoError(RepoError):
+    class RepoBare(RepoError):
         pass
 
-    class DirtyRepoError(RepoError):
+    class RepoUnclean(RepoError):
         pass
 
-    class UntrackedFilesRepoError(RepoError):
+    class RepoDirty(RepoUnclean):
+        pass
+
+    class RepoHasUntrackedFiles(RepoUnclean):
+        pass
+
+    class RepoNoRemote(RepoError):
+        pass
+
+    class RepoRemoteNotAdded(RepoNoRemote):
+        pass
+
+    class RepoRemoteNotExist(RepoNoRemote):
         pass
 
     def __init__(self, path: Union[str, pathlib.Path]):
@@ -29,13 +41,22 @@ class Store:
         self._check_repo()
 
     def _check_repo(self) -> None:
-        if self.repo.bare:  # This is not implicit.
-            raise self.BareRepoError('Repository must not be bare.')
-        if self.repo.is_dirty():
-            raise self.DirtyRepoError('Repository must not be dirty.')
-        if self.repo.untracked_files:
-            names = '\n'.join(self.repo.untracked_files)
-            raise self.UntrackedFilesRepoError(f'Repository must not have any untracked files. It has these:\n{names}')
+        repo = self.repo
+        if repo.bare:  # This is not implicit.
+            raise self.RepoBare('Repository must not be bare.')
+        if repo.active_branch.name != 'master':
+            raise self.RepoBranchNotMaster('Active repository branch must be "master".')
+        if repo.is_dirty():
+            raise self.RepoDirty('Repository must not be dirty.')
+        if repo.untracked_files:
+            names = '\n'.join(repo.untracked_files)
+            raise self.RepoHasUntrackedFiles(f'Repository must not have any untracked files. It has these:\n{names}')
+        if not repo.remotes:
+            raise self.RepoRemoteNotAdded('Repository must have a remote.')
+        if not repo.remotes().exists():
+            raise self.RepoRemoteNotExist('Repository remote must exist.')
+        # if not self.repo.remote().name == 'origin':
+        #     raise self.RemoteRepoError('Repository remote name must be "origin".')
 
     def add(self, blob: Union[bytes, str], timestamp: Optional[int] = None) -> None:
         pass
