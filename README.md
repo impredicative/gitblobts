@@ -6,7 +6,10 @@ It then commits and pushes the change.
 The file is assigned a nanosecond UTC timestamp as its name.
 The package allows subsequent retrieval of the blobs by a timestamp range.
 
-The package does not support multi-user use.
+The philosophy behind the package is that data must automatically be backed up elsewhere to guard against local data
+loss, while also remaining available locally.
+
+The package currently does not support any multi-user use.
 
 ## Installation
 Using Python 3.7+, run `pip install gitblobts`.
