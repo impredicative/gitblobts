@@ -48,6 +48,7 @@ blobs4: List[Blob] = list(store.readblobs(start_utc=time.time(), end_utc=time.ti
 ```
 
 ## To do
+* Add logging.
 * Perform compression.
 * Organize blobs into directory structure: YYYY/MM/DD/HH
 * Support encryption.
