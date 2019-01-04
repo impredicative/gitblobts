@@ -106,6 +106,7 @@ class Store:
         path = self._path / str(time_utc_ns)
         if sync_repo:
             self._pull_repo()  # TODO: Consider pull only if there is a merge conflict.
+        # TODO: Increment filename by 1 until file doesn't exist.
         path.write_bytes(blob)
         repo.index.add([path])
         if sync_repo:
