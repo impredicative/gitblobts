@@ -15,21 +15,31 @@ Using Python 3.7+, run `pip install gitblobts`. Any older version of Python will
 
 Storage:
 ```python
+from typing import List
 import gitblobts, json, time, urllib
 
 store = gitblobts.Store('/path_to/preexisting_git_repo')
-store.writeblob(blob='a byte encoded string'.encode())
-store.writeblob(blob=json.dumps([0, 1., 2.2, 3]).encode(), time_utc=time.time())
-store.writeblob(blob=b'some bytes', time_utc=time.gmtime())
-store.writeblob(blob=urllib.request.urlopen('https://upload.wikimedia.org/wikipedia/en/a/a9/Example.jpg').read())
+
+filename1_as_time_utc_ns: int = store.writeblob(blob='a byte encoded string'.encode())
+filename2_as_time_utc_ns: int = store.writeblob(blob=b'some bytes', time_utc=time.time())
+filename3_as_time_utc_ns: int = store.writeblob(blob=json.dumps([0, 1., 2.2, 3]).encode(), time_utc=time.time())
+filename4_as_time_utc_ns: int = store.writeblob(blob=urllib.request.urlopen('https://i.imgur.com/3GmPd7O.png').read())
+
+filenames1_as_time_utc_ns: List[int] = store.writeblobs(blobs=[b'first blob', b'another blob'])
+filenames2_as_time_utc_ns: List[int] = store.writeblobs(blobs=[b'A', b'B'], times_utc=[time.time(), time.time()])
 ```
 
 Retrieval:
 ```python
-import gitblobts
+from typing import List
+from gitblobts import Blob, Store
+import time
 
-store = gitblobts.Store('/path_to/preexisting_git_repo')
-blobs = list(store.readblobs(start='1 week ago', end='now'))
+store = Store('/path_to/preexisting_git_repo')
+blobs1: List[Blob] = list(store.readblobs())
+blobs2: List[Blob] = list(store.readblobs(start_utc='since midnight EST', end_utc='now'))
+blobs3: List[Blob] = list(store.readblobs(start_utc=time.time() - 86400, end_utc=time.time()))
+blobs4: List[Blob] = list(store.readblobs(start_utc=time.time(), end_utc=time.time() - 86400))
 ```
 
 ## To do
