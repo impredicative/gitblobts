@@ -124,12 +124,17 @@ class Store:
 
     def readblobs(self, start_utc: Optional[Union[float, time.struct_time, str]] = None,
                   end_utc: Optional[Union[float, time.struct_time, str]] = None) -> Iterable[Blob]:
-        # TODO: Return blobs in ascending or descending temporal order per order of start_utc and end_utc.
         self._pull_repo()
         start_utc = self._standardize_time_to_ns(start_utc) if start_utc is not None else 0
         end_utc = self._standardize_time_to_ns(end_utc) if end_utc is not None else float('inf')
-        for path in self._path.iterdir():
-            if path.is_file():
-                time_utc_ns = int(path.name)
-                if start_utc <= time_utc_ns <= end_utc:
-                    yield Blob(time_utc_ns, path.read_bytes())
+        paths = (path for path in self._path.iterdir() if path.is_file())
+        if start_utc <= end_utc:
+            times_utc_ns = (int(path.name) for path in paths if start_utc <= int(path.name) <= end_utc)
+            times_utc_ns = sorted(times_utc_ns)
+        else:
+            times_utc_ns = (int(path.name) for path in paths if end_utc <= int(path.name) <= start_utc)
+            times_utc_ns = sorted(times_utc_ns, reverse=True)
+
+        for time_utc_ns in times_utc_ns:
+            path = self._path / str(time_utc_ns)
+            yield Blob(time_utc_ns, path.read_bytes())
