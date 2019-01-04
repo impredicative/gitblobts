@@ -9,7 +9,7 @@ The package allows subsequent retrieval of the blobs by a UTC time range.
 Collaborative use of the same remote repo is supported.
 
 ## Installation
-Using Python 3.7+, run `pip install gitblobts`.
+Using Python 3.7+, run `pip install gitblobts`. Any older version of Python will not work.
 
 ## Usage
 
