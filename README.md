@@ -40,13 +40,14 @@ import time
 
 store = Store('/path_to/preexisting_git_repo')
 
-blobs1: List[Blob] = list(store.readblobs())
-blobs_bytes: List[bytes] = [b.blob for b in blobs1]
-times_utc_ns: List[int] = [b.time_utc_ns for b in blobs1]
+blobs: List[Blob] = list(store.readblobs())
+blobs_bytes: List[bytes] = [b.blob for b in blobs]
+times_utc_ns: List[int] = [b.time_utc_ns for b in blobs]
 
-blobs2: List[Blob] = list(store.readblobs(start_utc='since midnight', end_utc='now'))
-blobs3: List[Blob] = list(store.readblobs(start_utc=time.time() - 86400, end_utc=time.time()))
-blobs4: List[Blob] = list(store.readblobs(start_utc=time.time(), end_utc=time.time() - 86400))
+blobs2_ascending: List[Blob] = list(store.readblobs(start_utc='since midnight', end_utc='now'))
+blobs2_descending: List[Blob] = list(store.readblobs(start_utc='now', end_utc='since midnight'))
+blobs3_ascending: List[Blob] = list(store.readblobs(start_utc=time.time() - 86400, end_utc=time.time()))
+blobs3_descending: List[Blob] = list(store.readblobs(start_utc=time.time(), end_utc=time.time() - 86400))
 ```
 
 ## To do
