@@ -1,5 +1,6 @@
 import calendar
 import itertools
+import logging
 import pathlib
 import time
 import typing
@@ -8,6 +9,9 @@ from typing import Iterable, List, NamedTuple, Optional, Union
 import git
 
 import gitblobts.config as config
+import gitblobts.exc as exc
+
+log = logging.getLogger(__name__)
 
 
 class Blob(NamedTuple):
@@ -16,39 +20,6 @@ class Blob(NamedTuple):
 
 
 class Store:
-
-    class RepoError(Exception):
-        pass
-
-    class RepoBare(RepoError):
-        pass
-
-    class RepoUnclean(RepoError):
-        pass
-
-    class RepoDirty(RepoUnclean):
-        pass
-
-    class RepoHasUntrackedFiles(RepoUnclean):
-        pass
-
-    class RepoNoRemote(RepoError):
-        pass
-
-    class RepoRemoteNotAdded(RepoNoRemote):
-        pass
-
-    class RepoRemoteNotExist(RepoNoRemote):
-        pass
-
-    class TimeError(Exception):
-        pass
-
-    class TimeNotUTC(TimeError):
-        pass
-
-    class TimeUnhandledType(TimeError):
-        pass
 
     def __init__(self, path: Union[str, pathlib.Path]):
         self._path = pathlib.Path(path)
@@ -59,20 +30,20 @@ class Store:
     def _check_repo(self) -> None:
         repo = self.repo
         if repo.bare:  # This is not implicit.
-            raise self.RepoBare('Repository must not be bare.')
+            raise exc.RepoBare('Repository must not be bare.')
         # if repo.active_branch.name != 'master':
-        #     raise self.RepoBranchNotMaster('Active repository branch must be "master".')
+        #     raise exc.RepoBranchNotMaster('Active repository branch must be "master".')
         if repo.is_dirty():
-            raise self.RepoDirty('Repository must not be dirty.')
+            raise exc.RepoDirty('Repository must not be dirty.')
         if repo.untracked_files:
             names = '\n'.join(repo.untracked_files)
-            raise self.RepoHasUntrackedFiles(f'Repository must not have any untracked files. It has these:\n{names}')
+            raise exc.RepoHasUntrackedFiles(f'Repository must not have any untracked files. It has these:\n{names}')
         if not repo.remotes:
-            raise self.RepoRemoteNotAdded('Repository must have a remote.')
+            raise exc.RepoRemoteNotAdded('Repository must have a remote.')
         if not repo.remote().exists():
-            raise self.RepoRemoteNotExist('Repository remote must exist.')
+            raise exc.RepoRemoteNotExist('Repository remote must exist.')
         # if not self._repo.remote().name == 'origin':
-        #     raise self.RemoteRepoError('Repository remote name must be "origin".')
+        #     raise exc.RemoteRepoError('Repository remote name must be "origin".')
 
     def _pull_repo(self) -> None:
         try:
@@ -93,13 +64,13 @@ class Store:
             return _convert_seconds_to_ns(time_utc)
         elif isinstance(time_utc, time.struct_time):
             if time_utc.tm_zone != 'UTC':
-                raise self.TimeNotUTC(f"Provided timezone must be UTC, but it's {time_utc.tm_zone}.")
+                raise exc.TimeNotUTC(f"Provided timezone must be UTC, but it's {time_utc.tm_zone}.")
             return _convert_seconds_to_ns(calendar.timegm(time_utc))
         elif isinstance(str, time_utc):
             return 'CONVERT SLANG UTC TIME'  # TODO: Convert slang UTC time.
         else:
             annotation = typing.get_type_hints(self.writeblob)['time_utc']
-            raise self.TimeUnhandledType(f'Provided time is of an unhandled type "{type(time_utc)}. '
+            raise exc.TimeUnhandledType(f'Provided time is of an unhandled type "{type(time_utc)}. '
                                          f'It must be conform to {annotation}.')
 
     def writeblob(self, blob: bytes, time_utc: Optional[float] = None, sync_repo: Optional[bool] = True) -> int:
