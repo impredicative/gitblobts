@@ -24,12 +24,15 @@ class Store:
     def __init__(self, path: Union[str, pathlib.Path]):
         self._path = pathlib.Path(path)
         self._repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
+        log.info('Repository path is "%s".', self._path)
         self._check_repo()
         self._pull_repo()
 
     def _check_repo(self) -> None:
         repo = self.repo
+        log.debug('Checking repository.')
         if repo.bare:  # This is not implicit.
+            log.error('Repository is bare.')
             raise exc.RepoBare('Repository must not be bare.')
         # if repo.active_branch.name != 'master':
         #     raise exc.RepoBranchNotMaster('Active repository branch must be "master".')
@@ -44,16 +47,35 @@ class Store:
             raise exc.RepoRemoteNotExist('Repository remote must exist.')
         # if not self._repo.remote().name == 'origin':
         #     raise exc.RemoteRepoError('Repository remote name must be "origin".')
+        log.info('Finished checking repository.')
 
     def _pull_repo(self) -> None:
+        remote = self._repo.remote()
+        name = remote.name
+        log.debug('Pulling from repository remote "%s".', name)
         try:
-            self._repo.remote().pull()
+            remote.pull()
         except git.exc.GitCommandError:  # Could be due to no push yet.
+            log.warning('Failed to pull from repository remote "%s".', name)
             pass
+        else:
+            log.info('Pulled from repository remote "%s".', name)
 
     def _push_repo(self) -> None:
-        self._repo.index.commit('')
-        self._repo.remote().push()  # TODO: Pull and retry push to handle a merge conflict.
+        repo = self._repo
+        index = repo.index
+        if not index.entries:
+            log.warning('There is no entry in the repository index to commit.')
+        else:
+            log.debug('Committing repository index having %s entries.', len(index))
+            self._repo.index.commit('')
+            log.info('Committed repository index having %s entries.', len(index))
+
+        remote = repo.remote
+        name = remote.name
+        log.debug('Pushing to repository remote "%s".', name)
+        remote.push()  # TODO: Pull and retry push to handle a merge conflict.
+        log.info('Pushed to repository remote "%s".', name)
 
     def _standardize_time_to_ns(self, time_utc: Union[None, float, time.struct_time, str]) -> int:
         def _convert_seconds_to_ns(seconds: Union[int, float]) -> int:
