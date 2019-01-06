@@ -103,10 +103,16 @@ class Store:
     def writeblob(self, blob: bytes, time_utc: Optional[float] = None, sync_repo: Optional[bool] = True) -> int:
         repo = self._repo
         time_utc_ns = self._standardize_time_to_ns(time_utc)
-        path = self._path / str(time_utc_ns)
         if sync_repo:
             self._pull_repo()  # TODO: Consider pull only if there is a merge conflict.
-        # TODO: Increment filename by 1 until file doesn't exist.
+
+        while True:  # Use filename that doesn't already exist. Avoid overwriting existing file.
+            path = self._path / str(time_utc_ns)
+            if path.exists():
+                time_utc_ns += 1
+            else:
+                break
+
         path.write_bytes(blob)
         repo.index.add([path])
         if sync_repo:
