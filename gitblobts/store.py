@@ -7,6 +7,8 @@ from typing import Iterable, List, NamedTuple, Optional, Union
 
 import git
 
+import gitblobts.config as config
+
 
 class Blob(NamedTuple):
     time_utc_ns: int

@@ -1,1 +1,1 @@
-from gitblobts.gitblobts import Blob, Store
+from gitblobts.store import Blob, Store
