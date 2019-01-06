@@ -74,7 +74,7 @@ class Store:
         remote = repo.remote
         name = remote.name
         log.debug('Pushing to repository remote "%s".', name)
-        remote.push()  # TODO: Pull and retry push to handle a merge conflict.
+        remote.push()  # TODO: In case of a merge conflict, pull and retry push.
         log.info('Pushed to repository remote "%s".', name)
 
     def _standardize_time_to_ns(self, time_utc: Union[None, float, time.struct_time, str]) -> int:
@@ -96,6 +96,7 @@ class Store:
                                          f'It must be conform to {annotation}.')
 
     def writeblob(self, blob: bytes, time_utc: Optional[float] = None, sync_repo: Optional[bool] = True) -> int:
+        log.debug('Writing blob of length %s %s repository sync.', len(blob), 'with' if sync_repo else 'without')
         repo = self._repo
         time_utc_ns = self._standardize_time_to_ns(time_utc)
         if sync_repo:
@@ -108,20 +109,27 @@ class Store:
             else:
                 break
 
+        log.debug('Writing %s bytes to file %s.', len(blob), path.name)
         path.write_bytes(blob)
+        log.info('Finished writing %s bytes to file %s.', len(blob), path.name)
+
         repo.index.add([path])
+        log.info('Added file %s to repository index.', path.name)
         if sync_repo:
             self._push_repo()
         assert blob == path.read_bytes()
+        log.info('Finished writing blob of length %s with name %s.', len(blob), path.name)
         return time_utc_ns
 
     def writeblobs(self, blobs: Iterable[bytes], times_utc: Optional[Iterable[float]] = None) -> List[int]:
+        log.debug('Writing blobs.')
         self._pull_repo()  # TODO: Consider pull only if there is a merge conflict.
         if times_utc is None:
             times_utc = []
         times_utc_ns = [self.writeblob(blob, time_utc, sync_repo=False) for blob, time_utc in
                         itertools.zip_longest(blobs, times_utc)]
         self._push_repo()
+        log.info('Finished writing %s blobs.', len(times_utc_ns))
         return times_utc_ns
 
     def readblobs(self, start_utc: Optional[Union[float, time.struct_time, str]] = None,
