@@ -68,12 +68,13 @@ class Store:
     def _commit_and_push_repo(self) -> None:
         repo = self._repo
         index = repo.index
-        if not index.entries:
+        num_index_entries = len(index.entries)
+        if not num_index_entries:
             log.warning('There is no entry in the repository index to commit.')
             return
-        log.debug('Committing repository index having %s entries.', len(index))
+        log.debug('Committing repository index having %s entries.', num_index_entries)
         self._repo.index.commit('')
-        log.info('Committed repository index having %s entries.', len(index))
+        log.info('Committed repository index having %s entries.', num_index_entries)
 
         remote = repo.remote()
         log.debug('Pushing to repository remote "%s".', remote.name)
@@ -96,10 +97,10 @@ class Store:
         else:
             annotation = typing.get_type_hints(self.writeblob)['time_utc']
             raise exc.TimeUnhandledType(f'Provided time is of an unhandled type "{type(time_utc)}. '
-                                         f'It must be conform to {annotation}.')
+                                        f'It must be conform to {annotation}.')
 
-    def writeblob(self, blob: bytes, time_utc: Optional[float] = None, sync_repo: Optional[bool] = True) -> int:
-        log.debug('Writing blob of length %s %s repository sync.', len(blob), 'with' if sync_repo else 'without')
+    def addblob(self, blob: bytes, time_utc: Optional[float] = None, *, sync_repo: Optional[bool] = True) -> int:
+        log.debug('Adding blob of length %s %s repository sync.', len(blob), 'with' if sync_repo else 'without')
         repo = self._repo
         time_utc_ns = self._standardize_time_to_ns(time_utc)
         if sync_repo:
@@ -116,33 +117,33 @@ class Store:
         path.write_bytes(blob)
         log.info('Finished writing %s bytes to file %s.', len(blob), path.name)
 
-        repo.index.add([path])
+        repo.index.add([str(path)])
         log.info('Added file %s to repository index.', path.name)
         if sync_repo:
             # TODO: Perhaps consider using a name arg as the commit message.
             self._commit_and_push_repo()
         assert blob == path.read_bytes()
-        log.info('Finished writing blob of length %s with name %s.', len(blob), path.name)
+        log.info('Added blob of length %s with name %s.', len(blob), path.name)
         return time_utc_ns
 
-    def writeblobs(self, blobs: Iterable[bytes], times_utc: Optional[Iterable[float]] = None) -> List[int]:
-        log.debug('Writing blobs.')
+    def addblobs(self, blobs: Iterable[bytes], times_utc: Optional[Iterable[float]] = None) -> List[int]:
+        log.debug('Adding blobs.')
         self._pull_repo()  # TODO: Consider pull only if there is a merge conflict.
         if times_utc is None:
             times_utc = []
         times_utc_ns = [self.writeblob(blob, time_utc, sync_repo=False) for blob, time_utc in
                         itertools.zip_longest(blobs, times_utc)]
         self._commit_and_push_repo()
-        log.info('Finished writing %s blobs.', len(times_utc_ns))
+        log.info('Added %s blobs.', len(times_utc_ns))
         return times_utc_ns
 
-    def readblobs(self, start_utc: Optional[Union[float, time.struct_time, str]] = None,
+    def getblobs(self, start_utc: Optional[Union[float, time.struct_time, str]] = None,
                   end_utc: Optional[Union[float, time.struct_time, str]] = None) -> Iterable[Blob]:
-        log.debug('Reading blobs from "%s" UTC to "%s" UTC.', start_utc, end_utc)
+        log.debug('Getting blobs from "%s" UTC to "%s" UTC.', start_utc, end_utc)
         self._pull_repo()
         start_utc = self._standardize_time_to_ns(start_utc) if start_utc is not None else 0
         end_utc = self._standardize_time_to_ns(end_utc) if end_utc is not None else float('inf')
-        log.debug('Reading blobs from "%s" UTC to "%s" UTC.', start_utc, end_utc)
+        log.debug('Getting blobs from "%s" UTC to "%s" UTC.', start_utc, end_utc)
 
         paths = (path for path in self._path.iterdir() if path.is_file())
         if start_utc <= end_utc:
