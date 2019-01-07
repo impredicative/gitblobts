@@ -28,16 +28,17 @@ class Store:
         self._repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
         log.info('Repository path is "%s".', self._path)
         self._check_repo()
-        self._pull_repo()
+        # self._pull_repo()
 
     def _check_repo(self) -> None:
-        repo = self.repo
+        repo = self._repo
         log.debug('Checking repository.')
         if repo.bare:  # This is not implicit.
             log.error('Repository is bare.')
             raise exc.RepoBare('Repository must not be bare.')
         # if repo.active_branch.name != 'master':
         #     raise exc.RepoBranchNotMaster('Active repository branch must be "master".')
+        log.info('Active repository branch is "%s".', repo.active_branch.name)
         if repo.is_dirty():
             raise exc.RepoDirty('Repository must not be dirty.')
         if repo.untracked_files:
@@ -47,8 +48,9 @@ class Store:
             raise exc.RepoRemoteNotAdded('Repository must have a remote.')
         if not repo.remote().exists():
             raise exc.RepoRemoteNotExist('Repository remote must exist.')
-        # if not self._repo.remote().name == 'origin':
+        # if not repo.remote().name == 'origin':
         #     raise exc.RemoteRepoError('Repository remote name must be "origin".')
+        log.info('Repository remote is "%s".', repo.remote().name)
         log.info('Finished checking repository.')
 
     def _pull_repo(self) -> None:
