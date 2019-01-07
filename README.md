@@ -23,13 +23,13 @@ import gitblobts, json, time, urllib
 
 store = gitblobts.Store('/path_to/preexisting_git_repo')
 
-filename1_as_time_utc_ns: int = store.writeblob(blob='a byte encoded string'.encode())
-filename2_as_time_utc_ns: int = store.writeblob(blob=b'some bytes' * 1000, time_utc=time.time())
-filename3_as_time_utc_ns: int = store.writeblob(blob=json.dumps([0, 1., 2.2, 3]).encode(), time_utc=time.time())
-filename4_as_time_utc_ns: int = store.writeblob(blob=urllib.request.urlopen('https://i.imgur.com/3GmPd7O.png').read())
+filename1_as_time_utc_ns: int = store.addblob(blob='a byte encoded string'.encode())
+filename2_as_time_utc_ns: int = store.addblob(blob=b'some bytes' * 1000, time_utc=time.time())
+filename3_as_time_utc_ns: int = store.addblob(blob=json.dumps([0, 1., 2.2, 3]).encode(), time_utc=time.time())
+filename4_as_time_utc_ns: int = store.addblob(blob=urllib.request.urlopen('https://i.imgur.com/3GmPd7O.png').read())
 
-filenames1_as_time_utc_ns: List[int] = store.writeblobs(blobs=[b'first blob', b'another blob'])
-filenames2_as_time_utc_ns: List[int] = store.writeblobs(blobs=[b'A', b'B'], times_utc=[time.time(), time.time()])
+filenames1_as_time_utc_ns: List[int] = store.addblobs(blobs=[b'first blob', b'another blob'])
+filenames2_as_time_utc_ns: List[int] = store.addblobs(blobs=[b'A', b'B'], times_utc=[time.time(), time.time()])
 ```
 
 Retrieval:
@@ -40,14 +40,14 @@ import time
 
 store = Store('/path_to/preexisting_git_repo')
 
-blobs: List[Blob] = list(store.readblobs())
+blobs: List[Blob] = list(store.getblobs())
 blobs_bytes: List[bytes] = [b.blob for b in blobs]
 times_utc_ns: List[int] = [b.time_utc_ns for b in blobs]
 
-blobs2_ascending: List[Blob] = list(store.readblobs(start_utc='since midnight', end_utc='now'))
-blobs2_descending: List[Blob] = list(store.readblobs(start_utc='now', end_utc='since midnight'))
-blobs3_ascending: List[Blob] = list(store.readblobs(start_utc=time.time() - 86400, end_utc=time.time()))
-blobs3_descending: List[Blob] = list(store.readblobs(start_utc=time.time(), end_utc=time.time() - 86400))
+blobs2_ascending: List[Blob] = list(store.getblobs(start_utc='since midnight', end_utc='now'))
+blobs2_descending: List[Blob] = list(store.getblobs(start_utc='now', end_utc='since midnight'))
+blobs3_ascending: List[Blob] = list(store.getblobs(start_utc=time.time() - 86400, end_utc=time.time()))
+blobs3_descending: List[Blob] = list(store.getblobs(start_utc=time.time(), end_utc=time.time() - 86400))
 ```
 
 ## To do
