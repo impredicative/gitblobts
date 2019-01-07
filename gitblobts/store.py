@@ -28,7 +28,7 @@ class Store:
         self._repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
         log.info('Repository path is "%s".', self._path)
         self._check_repo()
-        # self._pull_repo()
+        self._pull_repo()
 
     def _check_repo(self) -> None:
         repo = self._repo
@@ -65,21 +65,20 @@ class Store:
         else:
             log.info('Pulled from repository remote "%s".', name)
 
-    def _push_repo(self) -> None:
+    def _commit_and_push_repo(self) -> None:
         repo = self._repo
         index = repo.index
         if not index.entries:
             log.warning('There is no entry in the repository index to commit.')
-        else:
-            log.debug('Committing repository index having %s entries.', len(index))
-            self._repo.index.commit('')
-            log.info('Committed repository index having %s entries.', len(index))
+            return
+        log.debug('Committing repository index having %s entries.', len(index))
+        self._repo.index.commit('')
+        log.info('Committed repository index having %s entries.', len(index))
 
-        remote = repo.remote
-        name = remote.name
-        log.debug('Pushing to repository remote "%s".', name)
+        remote = repo.remote()
+        log.debug('Pushing to repository remote "%s".', remote.name)
         remote.push()  # TODO: In case of a merge conflict, pull and retry push.
-        log.info('Pushed to repository remote "%s".', name)
+        log.info('Pushed to repository remote "%s".', remote.name)
 
     def _standardize_time_to_ns(self, time_utc: Union[None, float, time.struct_time, str]) -> int:
         def _convert_seconds_to_ns(seconds: Union[int, float]) -> int:
@@ -121,7 +120,7 @@ class Store:
         log.info('Added file %s to repository index.', path.name)
         if sync_repo:
             # TODO: Perhaps consider using a name arg as the commit message.
-            self._push_repo()
+            self._commit_and_push_repo()
         assert blob == path.read_bytes()
         log.info('Finished writing blob of length %s with name %s.', len(blob), path.name)
         return time_utc_ns
@@ -133,7 +132,7 @@ class Store:
             times_utc = []
         times_utc_ns = [self.writeblob(blob, time_utc, sync_repo=False) for blob, time_utc in
                         itertools.zip_longest(blobs, times_utc)]
-        self._push_repo()
+        self._commit_and_push_repo()
         log.info('Finished writing %s blobs.', len(times_utc_ns))
         return times_utc_ns
 
