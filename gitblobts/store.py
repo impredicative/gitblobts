@@ -1,10 +1,11 @@
 import calendar
+import dataclasses
 import itertools
 import logging
 import pathlib
 import time
 import typing
-from typing import Iterable, List, NamedTuple, Optional, Union
+from typing import Iterable, List, Optional, Union
 
 import git
 
@@ -14,7 +15,8 @@ import gitblobts.exc as exc
 log = logging.getLogger(__name__)
 
 
-class Blob(NamedTuple):
+@dataclasses.dataclass
+class Blob:
     time_utc_ns: int
     blob: bytes
 
@@ -116,6 +118,7 @@ class Store:
         repo.index.add([path])
         log.info('Added file %s to repository index.', path.name)
         if sync_repo:
+            # TODO: Perhaps consider using a name arg as the commit message.
             self._push_repo()
         assert blob == path.read_bytes()
         log.info('Finished writing blob of length %s with name %s.', len(blob), path.name)
@@ -134,17 +137,26 @@ class Store:
 
     def readblobs(self, start_utc: Optional[Union[float, time.struct_time, str]] = None,
                   end_utc: Optional[Union[float, time.struct_time, str]] = None) -> Iterable[Blob]:
+        log.debug('Reading blobs from "%s" UTC to "%s" UTC.', start_utc, end_utc)
         self._pull_repo()
         start_utc = self._standardize_time_to_ns(start_utc) if start_utc is not None else 0
         end_utc = self._standardize_time_to_ns(end_utc) if end_utc is not None else float('inf')
+        log.debug('Reading blobs from "%s" UTC to "%s" UTC.', start_utc, end_utc)
+
         paths = (path for path in self._path.iterdir() if path.is_file())
         if start_utc <= end_utc:
+            order = 'ascending'
             times_utc_ns = (int(path.name) for path in paths if start_utc <= int(path.name) <= end_utc)
             times_utc_ns = sorted(times_utc_ns)
         else:
+            order = 'descending'
             times_utc_ns = (int(path.name) for path in paths if end_utc <= int(path.name) <= start_utc)
             times_utc_ns = sorted(times_utc_ns, reverse=True)
+        log.debug('Yielding %s blobs in %s chronological order.', len(times_utc_ns), order)
 
         for time_utc_ns in times_utc_ns:
             path = self._path / str(time_utc_ns)
+            log.debug('Yielding blob %s.', path.name)
             yield Blob(time_utc_ns, path.read_bytes())
+            log.info('Yielded blob %s.', path.name)
+        log.info('Yielded %s blobs.', len(times_utc_ns))
