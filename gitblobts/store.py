@@ -114,9 +114,11 @@ class Store:
         elif isinstance(time_utc, float):
             return _convert_seconds_to_ns(time_utc)
         elif isinstance(time_utc, time.struct_time):
-            if time_utc.tm_zone != 'GMT':
-                raise exc.TimeNotUTC(f"Provided timezone must be UTC, but it's {time_utc.tm_zone}.")
-            return _convert_seconds_to_ns(calendar.timegm(time_utc))
+            if time_utc.tm_zone == 'GMT':
+                time_utc = calendar.timegm(time_utc)
+            else:
+                time_utc = time.mktime(time_utc)
+            return _convert_seconds_to_ns(time_utc)
         elif isinstance(time_utc, str):
             return 'CONVERT SLANG UTC TIME'  # TODO: Convert slang UTC time.
         else:
