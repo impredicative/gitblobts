@@ -55,12 +55,22 @@ class Store:
     def _pull_repo(self) -> None:
         remote = self._repo.remote()
         name = remote.name
+
+        def _is_pulled(pull_info: git.remote.FetchInfo) -> bool:
+            valid_flags = {pull_info.HEAD_UPTODATE, pull_info.FAST_FORWARD}
+            return pull_info.flags in valid_flags  # This check can require the use of & instead.
+
         log.debug('Pulling from repository remote "%s".', name)
         try:
-            remote.pull()
-        except git.exc.GitCommandError:  # Could be due to no push yet.
+            pull_info = remote.pull()[0]
+        except git.exc.GitCommandError:  # Could be due to no push ever.
             log.warning('Failed to pull from repository remote "%s".', name)
         else:
+            is_pulled = _is_pulled(pull_info)
+            logger = log.debug if is_pulled else log.error
+            logger('Pull flags were %s.', pull_info.flags)
+            if not is_pulled:
+                raise exc.RepoPullError(f'Failed to pull from repository remote "{remote.name}".')
             log.info('Pulled from repository remote "%s".', name)
 
     def _commit_and_push_repo(self) -> None:
@@ -71,13 +81,13 @@ class Store:
         log.info('Committed repository index.')
 
         def is_pushed(push_info: git.remote.PushInfo) -> bool:
-            return push_info.flags == push_info.FAST_FORWARD  # This can require the use of & instead.
+            return push_info.flags == push_info.FAST_FORWARD  # This check can require the use of & instead.
 
         remote = repo.remote()
         log.debug('Pushing to repository remote "%s".', remote.name)
         push_info = remote.push()[0]
         logger = log.debug if is_pushed(push_info) else log.warning
-        logger('Push flags were %s and summary was "%s".', push_info.flags, push_info.summary.strip())
+        logger('Push flags were %s and message was "%s".', push_info.flags, push_info.summary.strip())
         if not is_pushed(push_info):
             log.warning('Failed first attempt at pushing to repository remote "%s". A pull will be performed.',
                         remote.name)
@@ -85,7 +95,7 @@ class Store:
             log.info('Reattempting to push to repository remote "%s".', remote.name)
             push_info = remote.push()[0]
             logger = log.debug if is_pushed(push_info) else log.error
-            logger('Push flags were %s and summary was "%s".', push_info.flags, push_info.summary.strip())
+            logger('Push flags were %s and message was "%s".', push_info.flags, push_info.summary.strip())
             if not is_pushed(push_info):
                 raise exc.RepoPushError(f'Failed to push to repository remote "{remote.name}" despite a pull.')
         log.info('Pushed to repository remote "%s".', remote.name)
@@ -109,7 +119,7 @@ class Store:
                                         f'It must be conform to {annotation}.')
 
     def addblob(self, blob: bytes, time_utc: Optional[float] = None, *, sync_repo: Optional[bool] = True) -> int:
-        log.debug('Adding blob of length %s %s repository sync.', len(blob), 'with' if sync_repo else 'without')
+        log.info('Adding blob of length %s %s repository sync.', len(blob), 'with' if sync_repo else 'without')
         repo = self._repo
         time_utc_ns = self._standardize_time_to_ns(time_utc)
 
@@ -134,7 +144,7 @@ class Store:
         return time_utc_ns
 
     def addblobs(self, blobs: Iterable[bytes], times_utc: Optional[Iterable[float]] = None) -> List[int]:
-        log.debug('Adding blobs.')
+        log.info('Adding blobs.')
         if times_utc is None:
             times_utc = []
         times_utc_ns = [self.writeblob(blob, time_utc, sync_repo=False) for blob, time_utc in
@@ -145,11 +155,11 @@ class Store:
 
     def getblobs(self, start_utc: Optional[Union[float, time.struct_time, str]] = None,
                   end_utc: Optional[Union[float, time.struct_time, str]] = None) -> Iterable[Blob]:
-        log.debug('Getting blobs from "%s" UTC to "%s" UTC.', start_utc, end_utc)
+        log.info('Getting blobs from "%s" UTC to "%s" UTC.', start_utc, end_utc)
         self._pull_repo()
         start_utc = self._standardize_time_to_ns(start_utc) if start_utc is not None else 0
         end_utc = self._standardize_time_to_ns(end_utc) if end_utc is not None else float('inf')
-        log.debug('Getting blobs from "%s" UTC to "%s" UTC.', start_utc, end_utc)
+        log.info('Getting blobs from "%s" UTC to "%s" UTC.', start_utc, end_utc)
 
         paths = (path for path in self._path.iterdir() if path.is_file())
         if start_utc <= end_utc:

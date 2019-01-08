@@ -46,5 +46,9 @@ class RepoTransportError(RepoError):
     pass
 
 
+class RepoPullError(RepoTransportError):
+    pass
+
+
 class RepoPushError(RepoTransportError):
     pass
