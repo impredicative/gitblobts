@@ -1,13 +1,15 @@
 # gitblobts
 
 `gitblobts` is a Python package for git-backed time-indexed blob storage.
+Even so, a lock-in of the stored files with git is avoided.
+
 Its goal is to ensure data availability both locally and remotely.
 It stores each blob as a file in a preexisting local git repo.
-The name of the file is a high-resolution timestamp.
+The name of the file is a high-resolution nanosecond UTC timestamp.
 It then commits and pushes the changes.
-The file is assigned a nanosecond UTC timestamp as its name.
-The package allows subsequent retrieval of the blobs by a UTC time range.
 Given the pull and push actions, collaborative use of the same remote repo is supported.
+
+Subsequent retrieval of the blobs is by a UTC time range.
 
 As the code is in an early stage, the implementation should be reviewed before use.
 
