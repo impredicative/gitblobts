@@ -1,5 +1,10 @@
+import time
+
+
 class StoreError(Exception):
-    pass
+    def __init__(self, msg: str):
+        time.sleep(.01)  # Provides time for prior log messages to flush.
+        super().__init__(msg)
 
 
 class RepoError(StoreError):
