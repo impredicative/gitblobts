@@ -134,12 +134,12 @@ class Store:
 
         log.debug('Writing %s bytes to file %s.', len(blob), path.name)
         path.write_bytes(blob)
-        log.info('Finished writing %s bytes to file %s.', len(blob), path.name)
+        log.info('Wrote %s bytes to file %s.', len(blob), path.name)
 
         repo.index.add([str(path)])
         log.info('Added file %s to repository index.', path.name)
         if sync_repo:
-            # TODO: Perhaps consider using a name arg as the commit message.
+            # TODO: Consider a name argument which is used as the commit message.
             self._commit_and_push_repo()
         assert blob == path.read_bytes()
         log.info('Added blob of length %s with name %s.', len(blob), path.name)
@@ -149,7 +149,7 @@ class Store:
         log.info('Adding blobs.')
         if times_utc is None:
             times_utc = []
-        times_utc_ns = [self.writeblob(blob, time_utc, sync_repo=False) for blob, time_utc in
+        times_utc_ns = [self.addblob(blob, time_utc, sync_repo=False) for blob, time_utc in
                         itertools.zip_longest(blobs, times_utc)]
         self._commit_and_push_repo()
         log.info('Added %s blobs.', len(times_utc_ns))
