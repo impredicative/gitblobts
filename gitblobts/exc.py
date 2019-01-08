@@ -1,4 +1,8 @@
-class RepoError(Exception):
+class StoreError(Exception):
+    pass
+
+
+class RepoError(StoreError):
     pass
 
 
@@ -30,7 +34,11 @@ class RepoRemoteNotExist(RepoNoRemote):
     pass
 
 
-class TimeError(Exception):
+class TimeError(StoreError):
+    pass
+
+
+class TimeInvalid(TimeError):
     pass
 
 

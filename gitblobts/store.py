@@ -107,8 +107,8 @@ class Store:
             return int(round(seconds * int(1e9)))
         if time_utc is None:
             return time.time_ns()
-        elif time_utc in (0, float('inf'), float('-inf')):
-            return time_utc
+        elif time_utc in (float('inf'), float('-inf')):
+            raise exc.TimeInvalid(f'Provided time {time_utc} is invalid.')
         elif isinstance(time_utc, float):
             return _convert_seconds_to_ns(time_utc)
         elif isinstance(time_utc, time.struct_time):
@@ -166,6 +166,8 @@ class Store:
         start_utc = self._standardize_time_to_ns(start_utc) if start_utc is not None else 0
         end_utc = self._standardize_time_to_ns(end_utc) if end_utc is not None else float('inf')
         log.info('Getting blobs from %s UTC to %s UTC %s repository pull.', start_utc, end_utc, pull_state)
+        if start_utc == end_utc:
+            log.warning('Start and end times are the same. 0 or 1 blobs will be yielded.')
         if pull:
             self._pull_repo()
 
