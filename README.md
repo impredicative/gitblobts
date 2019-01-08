@@ -60,3 +60,4 @@ blobs3_descending: List[Blob] = list(store.getblobs(start_utc=time.time(), end_u
 * Considering organizing blobs into directory structure: YYYY/MM/DD/HH
 * Support asyncio or avoiding waiting for commit+push.
 * Support label/key/name/hash as filenames as an alternative to timestamp.
+* Support sharding across multiple repos.
