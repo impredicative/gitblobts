@@ -80,23 +80,25 @@ class Store:
         self._repo.index.commit('')
         log.info('Committed repository index.')
 
-        def is_pushed(push_info: git.remote.PushInfo) -> bool:
+        def _is_pushed(push_info: git.remote.PushInfo) -> bool:
             return push_info.flags == push_info.FAST_FORWARD  # This check can require the use of & instead.
 
         remote = repo.remote()
         log.debug('Pushing to repository remote "%s".', remote.name)
         push_info = remote.push()[0]
-        logger = log.debug if is_pushed(push_info) else log.warning
+        is_pushed = _is_pushed(push_info)
+        logger = log.debug if is_pushed else log.warning
         logger('Push flags were %s and message was "%s".', push_info.flags, push_info.summary.strip())
-        if not is_pushed(push_info):
+        if not is_pushed:
             log.warning('Failed first attempt at pushing to repository remote "%s". A pull will be performed.',
                         remote.name)
             self._pull_repo()
             log.info('Reattempting to push to repository remote "%s".', remote.name)
             push_info = remote.push()[0]
-            logger = log.debug if is_pushed(push_info) else log.error
+            is_pushed = _is_pushed(push_info)
+            logger = log.debug if is_pushed else log.error
             logger('Push flags were %s and message was "%s".', push_info.flags, push_info.summary.strip())
-            if not is_pushed(push_info):
+            if not is_pushed:
                 raise exc.RepoPushError(f'Failed to push to repository remote "{remote.name}" despite a pull.')
         log.info('Pushed to repository remote "%s".', remote.name)
 
