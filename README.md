@@ -12,6 +12,7 @@ Given the pull and push actions, collaborative use of the same remote repo is su
 Subsequent retrieval of the blobs is by a UTC time range.
 
 An effort has been made to keep third-party package requirements to a minimum.
+This is in order to lower any risk of long-term compatibility and maintainability issues.
 As the code is in an early stage, the implementation should be reviewed before use.
 
 ## Installation
