@@ -144,6 +144,7 @@ class Store:
             else:
                 break
 
+        # Note: Zero left-padding of the filename is intentionally not used as it can lead to comparison errors.
         log.debug('Writing %s bytes to file %s.', len(blob), path.name)
         path.write_bytes(blob)
         log.info('Wrote %s bytes to file %s.', len(blob), path.name)
