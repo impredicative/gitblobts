@@ -53,8 +53,7 @@ blobs3_ascending: List[Blob] = list(store.getblobs(start_utc=time.time() - 86400
 blobs3_descending: List[Blob] = list(store.getblobs(start_utc=time.time(), end_utc=time.time() - 86400))
 ```
 
-## To do
-* Add logging.
+## Wish list
 * Perform compression.
 * Support encryption after compression.
 * Considering organizing blobs into directory structure: YYYY/MM/DD/HH
