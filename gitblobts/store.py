@@ -2,6 +2,7 @@ import calendar
 import dataclasses
 import itertools
 import logging
+import math
 import pathlib
 import time
 import typing
@@ -109,11 +110,13 @@ class Store:
 
         if time_utc is None:
             return time.time_ns()
-        elif (time_utc in (float('inf'), float('-inf'))) or (time_utc < 0):
-            raise exc.TimeInvalid(f'Provided time {time_utc} is invalid for use as a filename.')
-        elif time_utc == 0:
+        elif time_utc == 0:  # OK as int since 0 seconds is 0 nanoseconds.
             return 0
         elif isinstance(time_utc, float):
+            if not math.isfinite(time_utc):
+                raise exc.TimeInvalid(f'Provided time "{time_utc}" must be finite and not NaN for use as a filename.')
+            elif time_utc < 0:
+                raise exc.TimeInvalid(f'Provided time "{time_utc}" must be non-negative for use as a filename.')
             return _convert_seconds_to_positive_ns(time_utc)
         elif isinstance(time_utc, time.struct_time):
             if time_utc.tm_zone == 'GMT':
@@ -165,7 +168,7 @@ class Store:
         return times_utc_ns
 
     def getblobs(self, start_utc: Optional[Union[float, time.struct_time, str]] = 0.,
-                 end_utc: Optional[Union[float, time.struct_time, str]] = float('inf'), *,
+                 end_utc: Optional[Union[float, time.struct_time, str]] = math.inf, *,
                  pull: Optional[bool] = False) -> Iterable[Blob]:
         pull_state = 'with' if pull else 'without'
         log.debug('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
@@ -173,18 +176,18 @@ class Store:
         def standardize_time_to_ns(time_utc):
             if time_utc < 0:
                 return 0  # This is lowest possible filename of timestamp.
-            elif time_utc == float('inf'):
+            elif time_utc == math.inf:
                 return time_utc
             return self._standardize_time_to_ns(time_utc)
 
         # Note: Either one of start_utc and end_utc can rightfully be smaller.
         start_utc = standardize_time_to_ns(start_utc) if start_utc is not None else 0
-        end_utc = standardize_time_to_ns(end_utc) if end_utc is not None else float('inf')
+        end_utc = standardize_time_to_ns(end_utc) if end_utc is not None else math.inf
         log.info('Getting blobs from %s to %s UTC %s repository pull.', start_utc, end_utc, pull_state)
 
         if start_utc == end_utc:
             log.warning('The effective start and end times are the same. As such, 0 or 1 blobs will be yielded.')
-        elif set([start_utc, end_utc]) == set([0, float('inf')]):  # This is a careful check of full range.
+        elif set([start_utc, end_utc]) == set([0, math.inf]):  # This is a careful check of full range.
             log.warning('The time range is infinity. As such, all blobs will be yielded.')
 
         if pull:
