@@ -47,8 +47,8 @@ blobs: List[Blob] = list(store.getblobs())
 blobs_bytes: List[bytes] = [b.blob for b in blobs]
 times_utc_ns: List[int] = [b.time_utc_ns for b in blobs]
 
-blobs2_ascending: List[Blob] = list(store.getblobs(start_utc='since midnight', end_utc='now'))
-blobs2_descending: List[Blob] = list(store.getblobs(start_utc='now', end_utc='since midnight'))
+blobs2_ascending: List[Blob] = list(store.getblobs(start_utc='midnight yesterday', end_utc='now'))
+blobs2_descending: List[Blob] = list(store.getblobs(start_utc='now', end_utc='midnight yesterday'))
 blobs3_ascending: List[Blob] = list(store.getblobs(start_utc=time.time() - 86400, end_utc=time.time()))
 blobs3_descending: List[Blob] = list(store.getblobs(start_utc=time.time(), end_utc=time.time() - 86400))
 ```
