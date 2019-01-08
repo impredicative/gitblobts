@@ -114,7 +114,7 @@ class Store:
         elif isinstance(time_utc, float):
             return _convert_seconds_to_ns(time_utc)
         elif isinstance(time_utc, time.struct_time):
-            if time_utc.tm_zone != 'UTC':
+            if time_utc.tm_zone != 'GMT':
                 raise exc.TimeNotUTC(f"Provided timezone must be UTC, but it's {time_utc.tm_zone}.")
             return _convert_seconds_to_ns(calendar.timegm(time_utc))
         elif isinstance(time_utc, str):
@@ -164,10 +164,10 @@ class Store:
                  end_utc: Optional[Union[float, time.struct_time, str]] = None, *,
                  pull: Optional[bool] = False) -> Iterable[Blob]:
         pull_state = 'with' if pull else 'without'
-        log.info('Getting blobs from "%s" UTC to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
+        log.info('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
         start_utc = self._standardize_time_to_ns(start_utc) if start_utc is not None else 0
         end_utc = self._standardize_time_to_ns(end_utc) if end_utc is not None else float('inf')
-        log.info('Getting blobs from %s UTC to %s UTC %s repository pull.', start_utc, end_utc, pull_state)
+        log.info('Getting blobs from %s to %s UTC %s repository pull.', start_utc, end_utc, pull_state)
         if start_utc == end_utc:
             log.warning('Start and end times are the same. 0 or 1 blobs will be yielded.')
         if pull:
