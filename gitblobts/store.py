@@ -12,7 +12,6 @@ from typing import Any, Iterable, List, Optional, Union
 import dateparser
 import git
 
-import gitblobts.config as config
 import gitblobts.exc as exc
 
 log = logging.getLogger(__name__)
