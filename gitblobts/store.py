@@ -164,7 +164,7 @@ class Store:
                  end_utc: Optional[Union[float, time.struct_time, str]] = None, *,
                  pull: Optional[bool] = False) -> Iterable[Blob]:
         pull_state = 'with' if pull else 'without'
-        log.info('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
+        log.debug('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
         start_utc = self._standardize_time_to_ns(start_utc) if start_utc is not None else 0
         end_utc = self._standardize_time_to_ns(end_utc) if end_utc is not None else float('inf')
         log.info('Getting blobs from %s to %s UTC %s repository pull.', start_utc, end_utc, pull_state)
