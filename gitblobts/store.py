@@ -107,6 +107,8 @@ class Store:
             return int(round(seconds * int(1e9)))
         if time_utc is None:
             return time.time_ns()
+        elif time_utc == 0:
+            return 0
         elif time_utc in (float('inf'), float('-inf')):
             raise exc.TimeInvalid(f'Provided time {time_utc} is invalid.')
         elif isinstance(time_utc, float):
