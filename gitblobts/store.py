@@ -28,7 +28,6 @@ class Store:
         self._repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
         log.info('Repository path is "%s".', self._path)
         self._check_repo()
-        # self._pull_repo()
 
     def _check_repo(self) -> None:
         repo = self._repo
@@ -67,12 +66,12 @@ class Store:
     def _commit_and_push_repo(self) -> None:
         repo = self._repo
         # Note: repo.index.entries was observed to also include unpushed files in addition to uncommitted files.
-        log.debug('Committing repository index .')
+        log.debug('Committing repository index.')
         self._repo.index.commit('')
         log.info('Committed repository index.')
 
         def is_pushed(push_info: git.remote.PushInfo) -> bool:
-            return push_info.flags == push_info.FAST_FORWARD
+            return push_info.flags == push_info.FAST_FORWARD  # This can require the use of & instead.
 
         remote = repo.remote()
         log.debug('Pushing to repository remote "%s".', remote.name)
@@ -113,8 +112,6 @@ class Store:
         log.debug('Adding blob of length %s %s repository sync.', len(blob), 'with' if sync_repo else 'without')
         repo = self._repo
         time_utc_ns = self._standardize_time_to_ns(time_utc)
-        # if sync_repo:
-        #     self._pull_repo()  # TODO: Consider pull only if there is a merge conflict.
 
         while True:  # Use filename that doesn't already exist. Avoid overwriting existing file.
             path = self._path / str(time_utc_ns)
@@ -138,7 +135,6 @@ class Store:
 
     def addblobs(self, blobs: Iterable[bytes], times_utc: Optional[Iterable[float]] = None) -> List[int]:
         log.debug('Adding blobs.')
-        self._pull_repo()  # TODO: Consider pull only if there is a merge conflict.
         if times_utc is None:
             times_utc = []
         times_utc_ns = [self.writeblob(blob, time_utc, sync_repo=False) for blob, time_utc in
