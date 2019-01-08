@@ -28,7 +28,7 @@ class Store:
         self._repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
         log.info('Repository path is "%s".', self._path)
         self._check_repo()
-        self._pull_repo()
+        # self._pull_repo()
 
     def _check_repo(self) -> None:
         repo = self._repo
@@ -61,24 +61,34 @@ class Store:
             remote.pull()
         except git.exc.GitCommandError:  # Could be due to no push yet.
             log.warning('Failed to pull from repository remote "%s".', name)
-            pass
         else:
             log.info('Pulled from repository remote "%s".', name)
 
     def _commit_and_push_repo(self) -> None:
         repo = self._repo
-        index = repo.index
-        num_index_entries = len(index.entries)
-        if not num_index_entries:
-            log.warning('There is no entry in the repository index to commit.')
-            return
-        log.debug('Committing repository index having %s entries.', num_index_entries)
+        # Note: repo.index.entries was observed to also include unpushed files in addition to uncommitted files.
+        log.debug('Committing repository index .')
         self._repo.index.commit('')
-        log.info('Committed repository index having %s entries.', num_index_entries)
+        log.info('Committed repository index.')
+
+        def is_pushed(push_info: git.remote.PushInfo) -> bool:
+            return push_info.flags == push_info.FAST_FORWARD
 
         remote = repo.remote()
         log.debug('Pushing to repository remote "%s".', remote.name)
-        remote.push()  # TODO: In case of a merge conflict, pull and retry push.
+        push_info = remote.push()[0]
+        logger = log.debug if is_pushed(push_info) else log.warning
+        logger('Push flags were %s and summary was "%s".', push_info.flags, push_info.summary.strip())
+        if not is_pushed(push_info):
+            log.warning('Failed first attempt at pushing to repository remote "%s". A pull will be performed.',
+                        remote.name)
+            self._pull_repo()
+            log.info('Reattempting to push to repository remote "%s".', remote.name)
+            push_info = remote.push()[0]
+            logger = log.debug if is_pushed(push_info) else log.error
+            logger('Push flags were %s and summary was "%s".', push_info.flags, push_info.summary.strip())
+            if not is_pushed(push_info):
+                raise exc.RepoPushError(f'Failed to push to repository remote "{remote.name}" despite a pull.')
         log.info('Pushed to repository remote "%s".', remote.name)
 
     def _standardize_time_to_ns(self, time_utc: Union[None, float, time.struct_time, str]) -> int:
@@ -103,8 +113,8 @@ class Store:
         log.debug('Adding blob of length %s %s repository sync.', len(blob), 'with' if sync_repo else 'without')
         repo = self._repo
         time_utc_ns = self._standardize_time_to_ns(time_utc)
-        if sync_repo:
-            self._pull_repo()  # TODO: Consider pull only if there is a merge conflict.
+        # if sync_repo:
+        #     self._pull_repo()  # TODO: Consider pull only if there is a merge conflict.
 
         while True:  # Use filename that doesn't already exist. Avoid overwriting existing file.
             path = self._path / str(time_utc_ns)

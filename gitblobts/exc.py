@@ -40,3 +40,11 @@ class TimeNotUTC(TimeError):
 
 class TimeUnhandledType(TimeError):
     pass
+
+
+class RepoTransportError(RepoError):
+    pass
+
+
+class RepoPushError(RepoTransportError):
+    pass
