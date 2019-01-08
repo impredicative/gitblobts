@@ -47,10 +47,6 @@ class TimeInvalid(TimeError):
     pass
 
 
-class TimeNotUTC(TimeError):
-    pass
-
-
 class TimeUnhandledType(TimeError):
     pass
 

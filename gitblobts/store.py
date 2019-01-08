@@ -103,22 +103,24 @@ class Store:
         log.info('Pushed to repository remote "%s".', remote.name)
 
     def _standardize_time_to_ns(self, time_utc: Union[None, float, time.struct_time, str]) -> int:
-        def _convert_seconds_to_ns(seconds: Union[int, float]) -> int:
-            return int(round(seconds * int(1e9)))
+        def _convert_seconds_to_positive_ns(seconds: Union[int, float]) -> int:
+            nanoseconds = int(round(seconds * int(1e9)))
+            return max(1, nanoseconds)
+
         if time_utc is None:
             return time.time_ns()
+        elif (time_utc in (float('inf'), float('-inf'))) or (time_utc < 0):
+            raise exc.TimeInvalid(f'Provided time {time_utc} is invalid for use as a filename.')
         elif time_utc == 0:
             return 0
-        elif time_utc in (float('inf'), float('-inf')):
-            raise exc.TimeInvalid(f'Provided time {time_utc} is invalid.')
         elif isinstance(time_utc, float):
-            return _convert_seconds_to_ns(time_utc)
+            return _convert_seconds_to_positive_ns(time_utc)
         elif isinstance(time_utc, time.struct_time):
             if time_utc.tm_zone == 'GMT':
                 time_utc = calendar.timegm(time_utc)
             else:
                 time_utc = time.mktime(time_utc)
-            return _convert_seconds_to_ns(time_utc)
+            return _convert_seconds_to_positive_ns(time_utc)
         elif isinstance(time_utc, str):
             return 'CONVERT SLANG UTC TIME'  # TODO: Convert slang UTC time.
         else:
@@ -162,19 +164,31 @@ class Store:
         log.info('Added %s blobs.', len(times_utc_ns))
         return times_utc_ns
 
-    def getblobs(self, start_utc: Optional[Union[float, time.struct_time, str]] = None,
-                 end_utc: Optional[Union[float, time.struct_time, str]] = None, *,
+    def getblobs(self, start_utc: Optional[Union[float, time.struct_time, str]] = 0.,
+                 end_utc: Optional[Union[float, time.struct_time, str]] = float('inf'), *,
                  pull: Optional[bool] = False) -> Iterable[Blob]:
         pull_state = 'with' if pull else 'without'
         log.debug('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
-        start_utc = self._standardize_time_to_ns(start_utc) if start_utc is not None else 0
-        end_utc = self._standardize_time_to_ns(end_utc) if end_utc is not None else float('inf')
+
+        def standardize_time_to_ns(time_utc):
+            if time_utc < 0:
+                return 0  # This is lowest possible filename of timestamp.
+            elif time_utc == float('inf'):
+                return time_utc
+            return self._standardize_time_to_ns(time_utc)
+
+        # Note: Either one of start_utc and end_utc can rightfully be smaller.
+        start_utc = standardize_time_to_ns(start_utc) if start_utc is not None else 0
+        end_utc = standardize_time_to_ns(end_utc) if end_utc is not None else float('inf')
         log.info('Getting blobs from %s to %s UTC %s repository pull.', start_utc, end_utc, pull_state)
+
         if start_utc == end_utc:
-            log.warning('Start and end times are the same. 0 or 1 blobs will be yielded.')
+            log.warning('The effective start and end times are the same. As such, 0 or 1 blobs will be yielded.')
+        elif set([start_utc, end_utc]) == set([0, float('inf')]):  # This is a careful check of full range.
+            log.warning('The time range is infinity. As such, all blobs will be yielded.')
+
         if pull:
             self._pull_repo()
-
         paths = (path for path in self._path.iterdir() if path.is_file())
         if start_utc <= end_utc:
             order = 'ascending'
@@ -184,7 +198,8 @@ class Store:
             order = 'descending'
             times_utc_ns = (int(path.name) for path in paths if end_utc <= int(path.name) <= start_utc)
             times_utc_ns = sorted(times_utc_ns, reverse=True)
-        log.debug('Yielding %s blobs in %s chronological order.', len(times_utc_ns), order)
+        if times_utc_ns:
+            log.debug('Yielding up to %s blobs in %s chronological order.', len(times_utc_ns), order)
 
         for time_utc_ns in times_utc_ns:
             path = self._path / str(time_utc_ns)
