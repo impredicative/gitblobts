@@ -107,21 +107,24 @@ class Store:
             return int(round(seconds * int(1e9)))
         if time_utc is None:
             return time.time_ns()
-        elif isinstance(float, time_utc):
+        elif time_utc in (0, float('inf'), float('-inf')):
+            return time_utc
+        elif isinstance(time_utc, float):
             return _convert_seconds_to_ns(time_utc)
         elif isinstance(time_utc, time.struct_time):
             if time_utc.tm_zone != 'UTC':
                 raise exc.TimeNotUTC(f"Provided timezone must be UTC, but it's {time_utc.tm_zone}.")
             return _convert_seconds_to_ns(calendar.timegm(time_utc))
-        elif isinstance(str, time_utc):
+        elif isinstance(time_utc, str):
             return 'CONVERT SLANG UTC TIME'  # TODO: Convert slang UTC time.
         else:
-            annotation = typing.get_type_hints(self.writeblob)['time_utc']
+            annotation = typing.get_type_hints(self._standardize_time_to_ns)['time_utc']
             raise exc.TimeUnhandledType(f'Provided time is of an unhandled type "{type(time_utc)}. '
                                         f'It must be conform to {annotation}.')
 
-    def addblob(self, blob: bytes, time_utc: Optional[float] = None, *, sync_repo: Optional[bool] = True) -> int:
-        log.info('Adding blob of length %s %s repository sync.', len(blob), 'with' if sync_repo else 'without')
+    def addblob(self, blob: bytes, time_utc: Optional[float] = None, *, push: Optional[bool] = True) -> int:
+        push_state = 'with' if push else 'without'
+        log.info('Adding blob of length %s %s repository push.', len(blob), push_state)
         repo = self._repo
         time_utc_ns = self._standardize_time_to_ns(time_utc)
 
@@ -138,7 +141,7 @@ class Store:
 
         repo.index.add([str(path)])
         log.info('Added file %s to repository index.', path.name)
-        if sync_repo:
+        if push:
             # TODO: Consider a name argument which is used as the commit message.
             self._commit_and_push_repo()
         assert blob == path.read_bytes()
@@ -149,19 +152,22 @@ class Store:
         log.info('Adding blobs.')
         if times_utc is None:
             times_utc = []
-        times_utc_ns = [self.addblob(blob, time_utc, sync_repo=False) for blob, time_utc in
+        times_utc_ns = [self.addblob(blob, time_utc, push=False) for blob, time_utc in
                         itertools.zip_longest(blobs, times_utc)]
         self._commit_and_push_repo()
         log.info('Added %s blobs.', len(times_utc_ns))
         return times_utc_ns
 
     def getblobs(self, start_utc: Optional[Union[float, time.struct_time, str]] = None,
-                  end_utc: Optional[Union[float, time.struct_time, str]] = None) -> Iterable[Blob]:
-        log.info('Getting blobs from "%s" UTC to "%s" UTC.', start_utc, end_utc)
-        self._pull_repo()
+                 end_utc: Optional[Union[float, time.struct_time, str]] = None, *,
+                 pull: Optional[bool] = False) -> Iterable[Blob]:
+        pull_state = 'with' if pull else 'without'
+        log.info('Getting blobs from "%s" UTC to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
         start_utc = self._standardize_time_to_ns(start_utc) if start_utc is not None else 0
         end_utc = self._standardize_time_to_ns(end_utc) if end_utc is not None else float('inf')
-        log.info('Getting blobs from "%s" UTC to "%s" UTC.', start_utc, end_utc)
+        log.info('Getting blobs from %s UTC to %s UTC %s repository pull.', start_utc, end_utc, pull_state)
+        if pull:
+            self._pull_repo()
 
         paths = (path for path in self._path.iterdir() if path.is_file())
         if start_utc <= end_utc:
