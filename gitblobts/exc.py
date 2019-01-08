@@ -43,6 +43,14 @@ class RepoRemoteNotExist(RepoNoRemote):
     pass
 
 
+class BlobError(StoreError):
+    pass
+
+
+class BlobTypeInvalid(BlobError):
+    pass
+
+
 class TimeError(StoreError):
     pass
 

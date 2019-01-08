@@ -141,6 +141,9 @@ class Store:
                                         f'It must be conform to {annotation}.')
 
     def addblob(self, blob: bytes, time_utc: Optional[Timestamp] = None, *, push: Optional[bool] = True) -> int:
+        if not isinstance(blob, bytes):
+            raise exc.BlobTypeInvalid('Blob must be an instance of type bytes, but it is of '
+                                      f'type {type(blob).__name__}.')
         push_state = 'with' if push else 'without'
         log.info('Adding blob of length %s and time "%s" %s repository push.', len(blob), time_utc, push_state)
         repo = self._repo
