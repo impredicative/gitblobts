@@ -1,12 +1,13 @@
 import calendar
 import dataclasses
+import inspect
 import itertools
 import logging
 import math
 import pathlib
 import time
 import typing
-from typing import Iterable, List, Optional, Union
+from typing import Any, Iterable, List, Optional, Union
 
 import git
 
@@ -14,6 +15,8 @@ import gitblobts.config as config
 import gitblobts.exc as exc
 
 log = logging.getLogger(__name__)
+
+Timestamp = Union[None, float, time.struct_time, str]
 
 
 @dataclasses.dataclass
@@ -103,7 +106,7 @@ class Store:
                 raise exc.RepoPushError(f'Failed to push to repository remote "{remote.name}" despite a pull.')
         log.info('Pushed to repository remote "%s".', remote.name)
 
-    def _standardize_time_to_ns(self, time_utc: Union[None, float, time.struct_time, str]) -> int:
+    def _standardize_time_to_ns(self, time_utc: Timestamp) -> int:
         def _convert_seconds_to_positive_ns(seconds: Union[int, float]) -> int:
             nanoseconds = int(round(seconds * int(1e9)))
             return max(1, nanoseconds)
@@ -128,10 +131,10 @@ class Store:
             return 'CONVERT SLANG UTC TIME'  # TODO: Convert slang UTC time.
         else:
             annotation = typing.get_type_hints(self._standardize_time_to_ns)['time_utc']
-            raise exc.TimeUnhandledType(f'Provided time is of an unhandled type "{type(time_utc)}. '
+            raise exc.TimeUnhandledType(f'Provided time "{time_utc}" is of an unhandled type "{type(time_utc)}. '
                                         f'It must be conform to {annotation}.')
 
-    def addblob(self, blob: bytes, time_utc: Optional[float] = None, *, push: Optional[bool] = True) -> int:
+    def addblob(self, blob: bytes, time_utc: Optional[Timestamp] = None, *, push: Optional[bool] = True) -> int:
         push_state = 'with' if push else 'without'
         log.info('Adding blob of length %s %s repository push.', len(blob), push_state)
         repo = self._repo
@@ -158,7 +161,7 @@ class Store:
         log.info('Added blob of length %s with name %s.', len(blob), path.name)
         return time_utc_ns
 
-    def addblobs(self, blobs: Iterable[bytes], times_utc: Optional[Iterable[float]] = None) -> List[int]:
+    def addblobs(self, blobs: Iterable[bytes], times_utc: Optional[Iterable[Timestamp]] = None) -> List[int]:
         log.info('Adding blobs.')
         if times_utc is None:
             times_utc = []
@@ -168,9 +171,8 @@ class Store:
         log.info('Added %s blobs.', len(times_utc_ns))
         return times_utc_ns
 
-    def getblobs(self, start_utc: Optional[Union[float, time.struct_time, str]] = 0.,
-                 end_utc: Optional[Union[float, time.struct_time, str]] = math.inf, *,
-                 pull: Optional[bool] = False) -> Iterable[Blob]:
+    def getblobs(self, start_utc: Optional[Timestamp] = 0., end_utc: Optional[Timestamp] = math.inf,
+                 *, pull: Optional[bool] = False) -> Iterable[Blob]:
         pull_state = 'with' if pull else 'without'
         log.debug('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
 
@@ -182,8 +184,10 @@ class Store:
             return self._standardize_time_to_ns(time_utc)
 
         # Note: Either one of start_utc and end_utc can rightfully be smaller.
-        start_utc = standardize_time_to_ns(start_utc) if start_utc is not None else 0
-        end_utc = standardize_time_to_ns(end_utc) if end_utc is not None else math.inf
+        def default_value(arg: str) -> Any:
+            return inspect.signature(self.getblobs).parameters[arg].default
+        start_utc = standardize_time_to_ns(start_utc) if start_utc is not None else default_value('start_utc')
+        end_utc = standardize_time_to_ns(end_utc) if end_utc is not None else default_value('end_utc')
         log.info('Getting blobs from %s to %s UTC %s repository pull.', start_utc, end_utc, pull_state)
 
         if start_utc == end_utc:
