@@ -9,6 +9,7 @@ import time
 import typing
 from typing import Any, Iterable, List, Optional, Union
 
+import dateparser
 import git
 
 import gitblobts.config as config
@@ -128,7 +129,13 @@ class Store:
                 time_utc = time.mktime(time_utc)
             return _convert_seconds_to_positive_ns(time_utc)
         elif isinstance(time_utc, str):
-            return 'CONVERT SLANG UTC TIME'  # TODO: Convert slang UTC time.
+            time_utc_input = time_utc
+            time_utc = dateparser.parse(time_utc, settings={'TO_TIMEZONE': 'UTC', 'RETURN_AS_TIMEZONE_AWARE': True,
+                                                            'PREFER_DATES_FROM': 'past'})
+            if time_utc is None:
+                raise exc.TimeInvalid(f'Provided time "{time_utc_input}" could not be parsed. It must be parsable by '
+                                      'dateparser.')
+            return _convert_seconds_to_positive_ns(time_utc.timestamp())
         else:
             annotation = typing.get_type_hints(self._standardize_time_to_ns)['time_utc']
             raise exc.TimeUnhandledType(f'Provided time "{time_utc}" is of an unhandled type "{type(time_utc)}. '
@@ -136,7 +143,7 @@ class Store:
 
     def addblob(self, blob: bytes, time_utc: Optional[Timestamp] = None, *, push: Optional[bool] = True) -> int:
         push_state = 'with' if push else 'without'
-        log.info('Adding blob of length %s %s repository push.', len(blob), push_state)
+        log.info('Adding blob of length %s and time "%s" %s repository push.', len(blob), time_utc, push_state)
         repo = self._repo
         time_utc_ns = self._standardize_time_to_ns(time_utc)
 
@@ -177,9 +184,12 @@ class Store:
         log.debug('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
 
         def standardize_time_to_ns(time_utc):
-            if time_utc < 0:
-                return 0  # This is lowest possible filename of timestamp.
-            elif time_utc == math.inf:
+            try:
+                if time_utc < 0:
+                    return 0  # This is lowest possible filename of timestamp.
+            except TypeError:
+                pass
+            if time_utc == math.inf:
                 return time_utc
             return self._standardize_time_to_ns(time_utc)
 

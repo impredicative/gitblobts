@@ -4,6 +4,12 @@
 #
 #    pip-compile --output-file requirements.txt requirements.in
 #
+dateparser==0.7.0
 gitdb2==2.0.5             # via gitpython
 gitpython==2.1.11
+python-dateutil==2.7.5    # via dateparser
+pytz==2018.9              # via dateparser, tzlocal
+regex==2018.11.22         # via dateparser
+six==1.12.0               # via python-dateutil
 smmap2==2.0.5             # via gitdb2
+tzlocal==1.5.1            # via dateparser
