@@ -4,10 +4,9 @@
 Even so, a lock-in of the stored files with git is avoided.
 
 Its goal is to ensure data availability both locally and remotely.
-It stores each blob as a file in a preexisting local git repo.
+It stores each blob as a file in a preexisting local and remote git repository.
 The name of the file is a high-resolution nanosecond UTC timestamp.
-It then commits and pushes the changes.
-Given the pull and push actions, collaborative use of the same remote repo is supported.
+Given the pull and push actions, just as with git, collaborative use of the same remote repo is supported.
 
 Subsequent retrieval of the blobs is by a UTC time range.
 
