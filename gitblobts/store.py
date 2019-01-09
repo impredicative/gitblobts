@@ -162,15 +162,19 @@ class Store:
         return self._decompress(self._decrypt(blob))
 
     def _decompress(self, blob: bytes) -> bytes:
+        log.debug('Decompressing blob.') if self._compression else log.debug('Skipping blob decompression.')
         return self._compression.decompress(blob) if self._compression else blob
 
     def _compress(self, blob: bytes) -> bytes:
+        log.debug('Compressing blob.') if self._compression else log.debug('Skipping blob compression.')
         return self._compression.compress(blob) if self._compression else blob
 
     def _decrypt(self, blob: bytes) -> bytes:
+        log.debug('Decrypting blob.') if self._encryption else log.debug('Skipping blob decryption.')
         return self._encryption.decrypt(blob) if self._encryption else blob
 
     def _encrypt(self, blob: bytes) -> bytes:
+        log.debug('Encrypting blob.') if self._encryption else log.debug('Skipping blob encryption.')
         return self._encryption.encrypt(blob) if self._encryption else blob
 
     def addblob(self, blob: bytes, time_utc: Optional[Timestamp] = None) -> int:
