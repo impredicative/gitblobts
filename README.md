@@ -22,7 +22,7 @@ Using Python 3.7+, run `pip install gitblobts`. Any older version of Python will
 Storage:
 ```python
 from typing import List
-import gitblobts, json, time, urllib
+import gitblobts, json, time, urllib.request
 
 store = gitblobts.Store('/path_to/preexisting_git_repo')
 
