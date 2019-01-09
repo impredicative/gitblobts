@@ -10,6 +10,7 @@ import time
 import typing
 from typing import Any, Iterable, List, Optional, Union
 
+import cryptography.fernet
 import dateparser
 import git
 
@@ -26,26 +27,38 @@ class Blob:
     blob: bytes
 
 
+def generate_key() -> bytes:
+    return cryptography.fernet.Fernet.generate_key()
+
+
 class Store:
 
-    def __init__(self, path: Union[str, pathlib.Path], *, compression: Optional[str] = None):
+    def __init__(self, path: Union[str, pathlib.Path], *, compression: Optional[str] = None,
+                 key: Optional[bytes] = None):
         self._path = pathlib.Path(path)
         self._compression = importlib.import_module(compression) if compression else None  # e.g. bz2, gzip, lzma
+        self._encryption = cryptography.fernet.Fernet(key) if key else None
         self._repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
-        log.info('Repository path is "%s".', self._path)
+        self._log_state()
         self._check_repo()
+
+    def _log_state(self) -> None:
+        log.info('Repository path is "%s".', self._path)
+        log.info('Compression is %s.',
+                 f'enabled with {self._compression.__name__}' if self._compression else 'not enabled')
+        log.info('Encryption is %s.',
+                 f'enabled with {self._encryption.__class__.__name__}' if self._encryption else 'not enabled')
 
     def _check_repo(self) -> None:
         repo = self._repo
         log.debug('Checking repository.')
         if repo.bare:  # This is not implicit.
-            log.error('Repository is bare.')
             raise exc.RepoBare('Repository must not be bare.')
         # if repo.active_branch.name != 'master':
         #     raise exc.RepoBranchNotMaster('Active repository branch must be "master".')
         log.info('Active repository branch is "%s".', repo.active_branch.name)
-        if repo.is_dirty():
-            raise exc.RepoDirty('Repository must not be dirty.')
+        # if repo.is_dirty():
+        #     raise exc.RepoDirty('Repository must not be dirty.')
         if repo.untracked_files:
             names = '\n'.join(repo.untracked_files)
             raise exc.RepoHasUntrackedFiles(f'Repository must not have any untracked files. It has these:\n{names}')
@@ -142,11 +155,23 @@ class Store:
             raise exc.TimeUnhandledType(f'Provided time "{time_utc}" is of an unhandled type "{type(time_utc)}. '
                                         f'It must be conform to {annotation}.')
 
+    def _process_in(self, blob: bytes) -> bytes:
+        return self._encrypt(self._compress(blob))
+
+    def _process_out(self, blob: bytes) -> bytes:
+        return self._decompress(self._decrypt(blob))
+
     def _decompress(self, blob: bytes) -> bytes:
         return self._compression.decompress(blob) if self._compression else blob
 
     def _compress(self, blob: bytes) -> bytes:
         return self._compression.compress(blob) if self._compression else blob
+
+    def _decrypt(self, blob: bytes) -> bytes:
+        return self._encryption.decrypt(blob) if self._encryption else blob
+
+    def _encrypt(self, blob: bytes) -> bytes:
+        return self._encryption.encrypt(blob) if self._encryption else blob
 
     def addblob(self, blob: bytes, time_utc: Optional[Timestamp] = None) -> int:
         return self._addblob(blob, time_utc, push=True)
@@ -170,7 +195,7 @@ class Store:
                 break
 
         blob_original = blob
-        blob = self._compress(blob)
+        blob = self._process_in(blob)
         log.debug('Writing %s bytes to file %s.', len(blob), path.name)
         path.write_bytes(blob)
         log.info('Wrote %s bytes to file %s.', len(blob), path.name)
@@ -178,10 +203,9 @@ class Store:
         repo.index.add([str(path)])
         log.info('Added file %s to repository index.', path.name)
         if push:
-            # TODO: Consider a name argument which is used as the commit message.
             self._commit_and_push_repo()
-        assert blob_original == self._decompress(path.read_bytes())
-        log.info('Added blob of length %s and compressed length %s with name %s.', len(blob_original), len(blob),
+        assert blob_original == self._process_out(path.read_bytes())
+        log.info('Added blob of raw length %s and processed length %s with name %s.', len(blob_original), len(blob),
                  path.name)
         return time_utc_ns
 
@@ -239,6 +263,6 @@ class Store:
         for time_utc_ns in times_utc_ns:
             path = self._path / str(time_utc_ns)
             log.debug('Yielding blob %s.', path.name)
-            yield Blob(time_utc_ns, self._decompress(path.read_bytes()))
+            yield Blob(time_utc_ns, self._process_out(path.read_bytes()))
             log.info('Yielded blob %s.', path.name)
         log.info('Yielded %s blobs.', len(times_utc_ns))
