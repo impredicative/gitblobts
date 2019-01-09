@@ -8,7 +8,7 @@ import math
 import pathlib
 import time
 import typing
-from typing import Any, Iterable, List, Optional, Union
+from typing import Any, Iterable, Iterator, List, Optional, Union
 
 import cryptography.fernet
 import dateparser
@@ -224,7 +224,7 @@ class Store:
         return times_utc_ns
 
     def getblobs(self, start_utc: Optional[Timestamp] = 0., end_utc: Optional[Timestamp] = math.inf,
-                 *, pull: Optional[bool] = False) -> Iterable[Blob]:
+                 *, pull: Optional[bool] = False) -> Iterator[Blob]:
         pull_state = 'with' if pull else 'without'
         log.debug('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
 
