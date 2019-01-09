@@ -1,6 +1,6 @@
 # gitblobts
 
-`gitblobts` is a Python package for git-backed time-indexed blob storage.
+`gitblobts` is an experimental Python package for git-backed time-indexed blob storage.
 Even so, a lock-in of the stored files with git is avoided.
 
 Its goal is to ensure data availability both locally and remotely.
@@ -19,14 +19,14 @@ Using Python 3.7+, run `pip install gitblobts`. Any older version of Python will
 
 ## Usage
 
-Storage:
+### Storage
 ```python
-from typing import List
+from typing import List, Optional
 import gitblobts, json, time, urllib.request
 
-optional_user_saved_encryption_key = gitblobts.generate_key()
-store = gitblobts.Store('/path_to/preexisting_git_repo', compression=[None, 'bz2', 'gzip', 'lzma'][2],
-                        key=optional_user_saved_encryption_key)
+compression: Optional[str] = [None, 'bz2', 'gzip', 'lzma'][2]
+user_saved_encryption_key: Optional[bytes] = [None, gitblobts.generate_key()][1]
+store = gitblobts.Store('/path_to/preexisting_git_repo', compression=compression, key=user_saved_encryption_key)
 
 filename1_as_time_utc_ns: int = store.addblob(blob='a byte encoded string'.encode())
 filename2_as_time_utc_ns: int = store.addblob(blob=b'some bytes' * 1000, time_utc=time.time())
@@ -37,7 +37,7 @@ filenames1_as_time_utc_ns: List[int] = store.addblobs(blobs=[b'first blob', b'an
 filenames2_as_time_utc_ns: List[int] = store.addblobs(blobs=[b'A', b'B'], times_utc=[time.time(), time.time()])
 ```
 
-Retrieval:
+### Retrieval
 ```python
 from typing import List
 from gitblobts import Blob, Store
@@ -55,8 +55,10 @@ blobs3_ascending: List[Blob] = list(store.getblobs(start_utc=time.time() - 86400
 blobs3_descending: List[Blob] = list(store.getblobs(start_utc=time.time(), end_utc=time.time() - 86400))
 ```
 
+<!--
 ## Wish list
 * Considering organizing blobs into directory structure: YYYY/MM/DD/HH
 * Support asyncio or avoiding waiting for commit+push.
 * Support label/key/name/hash as filenames as an alternative to timestamp.
 * Support sharding across multiple repos.
+-->
