@@ -1,5 +1,6 @@
 import calendar
 import dataclasses
+import importlib
 import inspect
 import itertools
 import logging
@@ -27,8 +28,9 @@ class Blob:
 
 class Store:
 
-    def __init__(self, path: Union[str, pathlib.Path]):
+    def __init__(self, path: Union[str, pathlib.Path], *, compression: Optional[str] = None):
         self._path = pathlib.Path(path)
+        self._compression = importlib.import_module(compression) if compression else None  # e.g. bz2, gzip, lzma
         self._repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
         log.info('Repository path is "%s".', self._path)
         self._check_repo()
@@ -140,15 +142,23 @@ class Store:
             raise exc.TimeUnhandledType(f'Provided time "{time_utc}" is of an unhandled type "{type(time_utc)}. '
                                         f'It must be conform to {annotation}.')
 
+    def _decompress(self, blob: bytes) -> bytes:
+        return self._compression.decompress(blob) if self._compression else blob
+
+    def _compress(self, blob: bytes) -> bytes:
+        return self._compression.compress(blob) if self._compression else blob
+
     def addblob(self, blob: bytes, time_utc: Optional[Timestamp] = None, *, push: Optional[bool] = True) -> int:
-        if not isinstance(blob, bytes):
-            raise exc.BlobTypeInvalid('Blob must be an instance of type bytes, but it is of '
-                                      f'type {type(blob).__name__}.')
         push_state = 'with' if push else 'without'
         log.info('Adding blob of length %s and time "%s" %s repository push.', len(blob), time_utc, push_state)
+        if not isinstance(blob, bytes):
+            raise exc.BlobTypeInvalid('Blob must be an instance of type bytes, but it is of '
+                                      f'type {type(blob).__qualname__}.')
+
         repo = self._repo
         time_utc_ns = self._standardize_time_to_ns(time_utc)
 
+        # Note: Zero left-padding of the filename is intentionally not used as it can lead to comparison errors.
         while True:  # Use filename that doesn't already exist. Avoid overwriting existing file.
             path = self._path / str(time_utc_ns)
             if path.exists():
@@ -156,7 +166,8 @@ class Store:
             else:
                 break
 
-        # Note: Zero left-padding of the filename is intentionally not used as it can lead to comparison errors.
+        blob_original = blob
+        blob = self._compress(blob)
         log.debug('Writing %s bytes to file %s.', len(blob), path.name)
         path.write_bytes(blob)
         log.info('Wrote %s bytes to file %s.', len(blob), path.name)
@@ -166,8 +177,9 @@ class Store:
         if push:
             # TODO: Consider a name argument which is used as the commit message.
             self._commit_and_push_repo()
-        assert blob == path.read_bytes()
-        log.info('Added blob of length %s with name %s.', len(blob), path.name)
+        assert blob_original == self._decompress(path.read_bytes())
+        log.info('Added blob of length %s and compressed length %s with name %s.', len(blob_original), len(blob),
+                 path.name)
         return time_utc_ns
 
     def addblobs(self, blobs: Iterable[bytes], times_utc: Optional[Iterable[Timestamp]] = None) -> List[int]:
@@ -224,6 +236,6 @@ class Store:
         for time_utc_ns in times_utc_ns:
             path = self._path / str(time_utc_ns)
             log.debug('Yielding blob %s.', path.name)
-            yield Blob(time_utc_ns, path.read_bytes())
+            yield Blob(time_utc_ns, self._decompress(path.read_bytes()))
             log.info('Yielded blob %s.', path.name)
         log.info('Yielded %s blobs.', len(times_utc_ns))
