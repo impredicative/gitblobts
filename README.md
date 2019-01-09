@@ -24,7 +24,9 @@ Storage:
 from typing import List
 import gitblobts, json, time, urllib.request
 
-store = gitblobts.Store('/path_to/preexisting_git_repo', compression=[None, 'bz2', 'gzip', 'lzma'][2])
+optional_user_saved_encryption_key = gitblobts.generate_key()
+store = gitblobts.Store('/path_to/preexisting_git_repo', compression=[None, 'bz2', 'gzip', 'lzma'][2],
+                        key=optional_user_saved_encryption_key)
 
 filename1_as_time_utc_ns: int = store.addblob(blob='a byte encoded string'.encode())
 filename2_as_time_utc_ns: int = store.addblob(blob=b'some bytes' * 1000, time_utc=time.time())
@@ -41,7 +43,7 @@ from typing import List
 from gitblobts import Blob, Store
 import time
 
-store = Store('/path_to/preexisting_git_repo', compression='gzip')
+store = Store('/path_to/preexisting_git_repo', compression='gzip', key=b'JVGmuw3wRntCc7dcQHJ5q1noUs62ydR0Nw8HpyllKn8=')
 
 blobs: List[Blob] = list(store.getblobs())
 blobs_bytes: List[bytes] = [b.blob for b in blobs]
@@ -54,7 +56,6 @@ blobs3_descending: List[Blob] = list(store.getblobs(start_utc=time.time(), end_u
 ```
 
 ## Wish list
-* Support encryption after compression.
 * Considering organizing blobs into directory structure: YYYY/MM/DD/HH
 * Support asyncio or avoiding waiting for commit+push.
 * Support label/key/name/hash as filenames as an alternative to timestamp.
