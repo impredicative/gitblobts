@@ -148,7 +148,10 @@ class Store:
     def _compress(self, blob: bytes) -> bytes:
         return self._compression.compress(blob) if self._compression else blob
 
-    def addblob(self, blob: bytes, time_utc: Optional[Timestamp] = None, *, push: Optional[bool] = True) -> int:
+    def addblob(self, blob: bytes, time_utc: Optional[Timestamp] = None) -> int:
+        return self._addblob(blob, time_utc, push=True)
+
+    def _addblob(self, blob: bytes, time_utc: Union[None, Timestamp], *, push: bool) -> int:
         push_state = 'with' if push else 'without'
         log.info('Adding blob of length %s and time "%s" %s repository push.', len(blob), time_utc, push_state)
         if not isinstance(blob, bytes):
@@ -186,7 +189,7 @@ class Store:
         log.info('Adding blobs.')
         if times_utc is None:
             times_utc = []
-        times_utc_ns = [self.addblob(blob, time_utc, push=False) for blob, time_utc in
+        times_utc_ns = [self._addblob(blob, time_utc, push=False) for blob, time_utc in
                         itertools.zip_longest(blobs, times_utc)]
         self._commit_and_push_repo()
         log.info('Added %s blobs.', len(times_utc_ns))
