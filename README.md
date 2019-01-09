@@ -24,7 +24,7 @@ Storage:
 from typing import List
 import gitblobts, json, time, urllib.request
 
-store = gitblobts.Store('/path_to/preexisting_git_repo')
+store = gitblobts.Store('/path_to/preexisting_git_repo', compression=[None, 'bz2', 'gzip', 'lzma'][2])
 
 filename1_as_time_utc_ns: int = store.addblob(blob='a byte encoded string'.encode())
 filename2_as_time_utc_ns: int = store.addblob(blob=b'some bytes' * 1000, time_utc=time.time())
@@ -41,7 +41,7 @@ from typing import List
 from gitblobts import Blob, Store
 import time
 
-store = Store('/path_to/preexisting_git_repo', compression=[None, 'bz2', 'gzip', 'lzma'][2])
+store = Store('/path_to/preexisting_git_repo', compression='gzip')
 
 blobs: List[Blob] = list(store.getblobs())
 blobs_bytes: List[bytes] = [b.blob for b in blobs]
