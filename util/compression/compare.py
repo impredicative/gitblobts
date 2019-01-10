@@ -4,7 +4,8 @@ import statistics
 import time
 from typing import List
 
-_COMPRESSORS = ['bz2', 'gzip', 'lzma']
+_COMPRESSORS = ['bz2', 'gzip', 'lzma', 'zlib']
+# Note: gzip and zlib are effectively the same except for the level of compression.
 
 
 def compare_compressors(filetype: str, samples: List[bytes], compressors: List[str] = _COMPRESSORS):
