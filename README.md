@@ -6,7 +6,10 @@ Even so, a lock-in of the stored files with git is avoided.
 Its goal is to ensure availability of data both locally and remotely.
 It stores each blob as a file in a preexisting local and remote git repository.
 The name of the file is a high-resolution nanosecond UTC timestamp.
+
 Given the pull and push actions of git, collaborative use of the same remote repo is supported.
+Having said that, if multiple users attempt to push a file with the same timestamp to the same remote repo, this
+leads to a merge conflict, and the `gitblobts.exc.RepoPushError` exception is raised.
 
 Subsequent retrieval of the blobs is by a UTC time range.
 At this time there is no implemented method to remove or overwrite a blob; this is by design.
@@ -62,6 +65,7 @@ blobs3_descending: List[Blob] = list(store.getblobs(start_utc=time.time(), end_u
 ```
 
 ## To do
+* Handle merge conflict.
 * Publish to pypi.
 * Add tests, also refactoring the code to be more testable.
 * Add documentation.
