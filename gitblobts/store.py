@@ -42,12 +42,38 @@ class Store:
         self._log_state()
         self._check_repo()
 
-    def _log_state(self) -> None:
-        log.info('Repository path is "%s".', self._path)
-        log.info('Compression is %s.',
-                 f'enabled with {self._compression.__name__}' if self._compression else 'not enabled')
-        log.info('Encryption is %s.',
-                 f'enabled with {self._encryption.__class__.__name__}' if self._encryption else 'not enabled')
+    def _addblob(self, blob: bytes, time_utc: Union[None, Timestamp], *, push: bool) -> int:
+        push_state = 'with' if push else 'without'
+        log.info('Adding blob of length %s and time "%s" %s repository push.', len(blob), time_utc, push_state)
+        if not isinstance(blob, bytes):
+            raise exc.BlobTypeInvalid('Blob must be an instance of type bytes, but it is of '
+                                      f'type {type(blob).__qualname__}.')
+
+        repo = self._repo
+        time_utc_ns = self._standardize_time_to_ns(time_utc)
+
+        # Note: Zero left-padding of the filename is intentionally not used as it can lead to comparison errors.
+        while True:  # Use filename that doesn't already exist. Avoid overwriting existing file.
+            path = self._path / str(time_utc_ns)
+            if path.exists():
+                time_utc_ns += 1
+            else:
+                break
+
+        blob_original = blob
+        blob = self._process_in(blob)
+        log.debug('Writing %s bytes to file %s.', len(blob), path.name)
+        path.write_bytes(blob)
+        log.info('Wrote %s bytes to file %s.', len(blob), path.name)
+
+        repo.index.add([str(path)])
+        log.info('Added file %s to repository index.', path.name)
+        if push:
+            self._commit_and_push_repo()
+        assert blob_original == self._process_out(path.read_bytes())
+        log.info('Added blob of raw length %s and processed length %s with name %s.', len(blob_original), len(blob),
+                 path.name)
+        return time_utc_ns
 
     def _check_repo(self) -> None:
         repo = self._repo
@@ -70,27 +96,6 @@ class Store:
         #     raise exc.RemoteRepoError('Repository remote name must be "origin".')
         log.info('Repository remote is "%s".', repo.remote().name)
         log.info('Finished checking repository.')
-
-    def _pull_repo(self) -> None:
-        remote = self._repo.remote()
-        name = remote.name
-
-        def _is_pulled(pull_info: git.remote.FetchInfo) -> bool:
-            valid_flags = {pull_info.HEAD_UPTODATE, pull_info.FAST_FORWARD}
-            return pull_info.flags in valid_flags  # This check can require the use of & instead.
-
-        log.debug('Pulling from repository remote "%s".', name)
-        try:
-            pull_info = remote.pull()[0]
-        except git.exc.GitCommandError:  # Could be due to no push ever.
-            log.warning('Failed to pull from repository remote "%s".', name)
-        else:
-            is_pulled = _is_pulled(pull_info)
-            logger = log.debug if is_pulled else log.error
-            logger('Pull flags were %s.', pull_info.flags)
-            if not is_pulled:
-                raise exc.RepoPullError(f'Failed to pull from repository remote "{remote.name}".')
-            log.info('Pulled from repository remote "%s".', name)
 
     def _commit_and_push_repo(self) -> None:
         repo = self._repo
@@ -120,6 +125,56 @@ class Store:
             if not is_pushed:
                 raise exc.RepoPushError(f'Failed to push to repository remote "{remote.name}" despite a pull.')
         log.info('Pushed to repository remote "%s".', remote.name)
+
+    def _compress(self, blob: bytes) -> bytes:
+        log.debug('Compressing blob.') if self._compression else log.debug('Skipping blob compression.')
+        return self._compression.compress(blob) if self._compression else blob
+
+    def _decompress(self, blob: bytes) -> bytes:
+        log.debug('Decompressing blob.') if self._compression else log.debug('Skipping blob decompression.')
+        return self._compression.decompress(blob) if self._compression else blob
+
+    def _decrypt(self, blob: bytes) -> bytes:
+        log.debug('Decrypting blob.') if self._encryption else log.debug('Skipping blob decryption.')
+        return self._encryption.decrypt(blob) if self._encryption else blob
+
+    def _encrypt(self, blob: bytes) -> bytes:
+        log.debug('Encrypting blob.') if self._encryption else log.debug('Skipping blob encryption.')
+        return self._encryption.encrypt(blob) if self._encryption else blob
+
+    def _log_state(self) -> None:
+        log.info('Repository path is "%s".', self._path)
+        log.info('Compression is %s.',
+                 f'enabled with {self._compression.__name__}' if self._compression else 'not enabled')
+        log.info('Encryption is %s.',
+                 f'enabled with {self._encryption.__class__.__name__}' if self._encryption else 'not enabled')
+
+    def _process_in(self, blob: bytes) -> bytes:
+        return self._encrypt(self._compress(blob))
+
+    def _process_out(self, blob: bytes) -> bytes:
+        return self._decompress(self._decrypt(blob))
+
+    def _pull_repo(self) -> None:
+        remote = self._repo.remote()
+        name = remote.name
+
+        def _is_pulled(pull_info: git.remote.FetchInfo) -> bool:
+            valid_flags = {pull_info.HEAD_UPTODATE, pull_info.FAST_FORWARD}
+            return pull_info.flags in valid_flags  # This check can require the use of & instead.
+
+        log.debug('Pulling from repository remote "%s".', name)
+        try:
+            pull_info = remote.pull()[0]
+        except git.exc.GitCommandError:  # Could be due to no push ever.
+            log.warning('Failed to pull from repository remote "%s".', name)
+        else:
+            is_pulled = _is_pulled(pull_info)
+            logger = log.debug if is_pulled else log.error
+            logger('Pull flags were %s.', pull_info.flags)
+            if not is_pulled:
+                raise exc.RepoPullError(f'Failed to pull from repository remote "{remote.name}".')
+            log.info('Pulled from repository remote "%s".', name)
 
     def _standardize_time_to_ns(self, time_utc: Timestamp) -> int:
         def _convert_seconds_to_positive_ns(seconds: Union[int, float]) -> int:
@@ -155,63 +210,8 @@ class Store:
             raise exc.TimeUnhandledType(f'Provided time "{time_utc}" is of an unhandled type "{type(time_utc)}. '
                                         f'It must be conform to {annotation}.')
 
-    def _process_in(self, blob: bytes) -> bytes:
-        return self._encrypt(self._compress(blob))
-
-    def _process_out(self, blob: bytes) -> bytes:
-        return self._decompress(self._decrypt(blob))
-
-    def _decompress(self, blob: bytes) -> bytes:
-        log.debug('Decompressing blob.') if self._compression else log.debug('Skipping blob decompression.')
-        return self._compression.decompress(blob) if self._compression else blob
-
-    def _compress(self, blob: bytes) -> bytes:
-        log.debug('Compressing blob.') if self._compression else log.debug('Skipping blob compression.')
-        return self._compression.compress(blob) if self._compression else blob
-
-    def _decrypt(self, blob: bytes) -> bytes:
-        log.debug('Decrypting blob.') if self._encryption else log.debug('Skipping blob decryption.')
-        return self._encryption.decrypt(blob) if self._encryption else blob
-
-    def _encrypt(self, blob: bytes) -> bytes:
-        log.debug('Encrypting blob.') if self._encryption else log.debug('Skipping blob encryption.')
-        return self._encryption.encrypt(blob) if self._encryption else blob
-
     def addblob(self, blob: bytes, time_utc: Optional[Timestamp] = None) -> int:
         return self._addblob(blob, time_utc, push=True)
-
-    def _addblob(self, blob: bytes, time_utc: Union[None, Timestamp], *, push: bool) -> int:
-        push_state = 'with' if push else 'without'
-        log.info('Adding blob of length %s and time "%s" %s repository push.', len(blob), time_utc, push_state)
-        if not isinstance(blob, bytes):
-            raise exc.BlobTypeInvalid('Blob must be an instance of type bytes, but it is of '
-                                      f'type {type(blob).__qualname__}.')
-
-        repo = self._repo
-        time_utc_ns = self._standardize_time_to_ns(time_utc)
-
-        # Note: Zero left-padding of the filename is intentionally not used as it can lead to comparison errors.
-        while True:  # Use filename that doesn't already exist. Avoid overwriting existing file.
-            path = self._path / str(time_utc_ns)
-            if path.exists():
-                time_utc_ns += 1
-            else:
-                break
-
-        blob_original = blob
-        blob = self._process_in(blob)
-        log.debug('Writing %s bytes to file %s.', len(blob), path.name)
-        path.write_bytes(blob)
-        log.info('Wrote %s bytes to file %s.', len(blob), path.name)
-
-        repo.index.add([str(path)])
-        log.info('Added file %s to repository index.', path.name)
-        if push:
-            self._commit_and_push_repo()
-        assert blob_original == self._process_out(path.read_bytes())
-        log.info('Added blob of raw length %s and processed length %s with name %s.', len(blob_original), len(blob),
-                 path.name)
-        return time_utc_ns
 
     def addblobs(self, blobs: Iterable[bytes], times_utc: Optional[Iterable[Timestamp]] = None) -> List[int]:
         log.info('Adding blobs.')
