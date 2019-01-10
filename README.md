@@ -18,7 +18,7 @@ An effort has been made to keep third-party package requirements to a minimum.
 As the code is in an early stage, the implementation should be reviewed before use.
 
 ## Installation
-Using Python 3.7+, run `pip install gitblobts`. Older version of Python will not work.
+Using Python 3.7+, run `pip install gitblobts` (pending). Older version of Python will not work.
 
 ## Usage
 
@@ -58,6 +58,11 @@ blobs2_descending: List[Blob] = list(store.getblobs(start_utc='now', end_utc='mi
 blobs3_ascending: List[Blob] = list(store.getblobs(start_utc=time.time() - 86400, end_utc=time.time(), pull=True))
 blobs3_descending: List[Blob] = list(store.getblobs(start_utc=time.time(), end_utc=time.time() - 86400))
 ```
+
+## To do
+* Publish to pypi.
+* Add tests, also refactoring the code to be more testable.
+* Add documentation.
 
 <!--
 ## Wish list
