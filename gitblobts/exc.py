@@ -1,5 +1,4 @@
 import logging
-import time
 
 log = logging.getLogger(__name__)
 
@@ -7,7 +6,6 @@ log = logging.getLogger(__name__)
 class StoreError(Exception):
     def __init__(self, msg: str):
         log.error(msg)
-        time.sleep(.01)  # Provides time for prior log messages to flush.
         super().__init__(msg)
 
 
