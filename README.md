@@ -9,6 +9,10 @@ The name of the file is a high-resolution nanosecond UTC timestamp.
 Given the pull and push actions of git, collaborative use of the same remote repo is supported.
 
 Subsequent retrieval of the blobs is by a UTC time range.
+At this time there is no implemented method to remove or overwrite a blob; this is by design.
+From the perspective of the package, once a blob is written, it is considered read-only.
+If an attempt is made to write a blob with the same timestamp as a preexisting blob, the supplied timestamp will be
+incremented, and a new blob will be written to a new file.
 
 An effort has been made to keep third-party package requirements to a minimum.
 As the code is in an early stage, the implementation should be reviewed before use.
@@ -23,9 +27,10 @@ Using Python 3.7+, run `pip install gitblobts`. Older version of Python will not
 from typing import List, Optional
 import gitblobts, json, time, urllib.request
 
-compression: Optional[str] = [None, 'bz2', 'gzip', 'lzma'][2]
-user_saved_encryption_key: Optional[bytes] = [None, gitblobts.generate_key()][1]
-store = gitblobts.Store('/path_to/preexisting_git_repo', compression=compression, key=user_saved_encryption_key)
+optional_compression_module_name: Optional[str] = [None, 'bz2', 'gzip', 'lzma'][2]
+optional_user_saved_encryption_key: Optional[bytes] = [None, gitblobts.generate_key()][1]
+store = gitblobts.Store('/path_to/preexisting_git_repo', compression=optional_compression_module_name,
+                        key=optional_user_saved_encryption_key)
 
 filename1_as_time_utc_ns: int = store.addblob(blob='a byte encoded string'.encode())
 filename2_as_time_utc_ns: int = store.addblob(blob=b'some bytes' * 1000, time_utc=time.time())
@@ -49,8 +54,8 @@ blobs_bytes: List[bytes] = [b.blob for b in blobs]
 times_utc_ns: List[int] = [b.time_utc_ns for b in blobs]
 
 blobs2_ascending: List[Blob] = list(store.getblobs(start_utc='midnight yesterday', end_utc='now'))
-blobs2_descending: List[Blob] = list(store.getblobs(start_utc='now', end_utc='midnight yesterday'))
-blobs3_ascending: List[Blob] = list(store.getblobs(start_utc=time.time() - 86400, end_utc=time.time()))
+blobs2_descending: List[Blob] = list(store.getblobs(start_utc='now', end_utc='midnight yesterday', pull=True))
+blobs3_ascending: List[Blob] = list(store.getblobs(start_utc=time.time() - 86400, end_utc=time.time(), pull=True))
 blobs3_descending: List[Blob] = list(store.getblobs(start_utc=time.time(), end_utc=time.time() - 86400))
 ```
 
