@@ -83,8 +83,8 @@ class Store:
         # if repo.active_branch.name != 'master':
         #     raise exc.RepoBranchNotMaster('Active repository branch must be "master".')
         log.info('Active repository branch is "%s".', repo.active_branch.name)
-        # if repo.is_dirty():
-        #     raise exc.RepoDirty('Repository must not be dirty.')
+        if repo.is_dirty():
+            raise exc.RepoDirty('Repository must not be dirty.')
         if repo.untracked_files:
             names = '\n'.join(repo.untracked_files)
             raise exc.RepoHasUntrackedFiles(f'Repository must not have any untracked files. It has these:\n{names}')
