@@ -19,6 +19,8 @@ As the code is in an early stage, the implementation should be reviewed before u
 
 ## Installation
 Using Python 3.7+, run `pip install gitblobts` (pending). Older version of Python will not work.
+This is due to the reliance on [`time_ns`](https://docs.python.org/3/library/time.html#time.time_ns);
+it doesn't exist in older versions.
 
 ## Usage
 
