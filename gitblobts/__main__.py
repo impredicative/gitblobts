@@ -7,10 +7,11 @@ configure_logging()
 
 if __name__ == '__main__':
     try:
-        store = Store('/home/devuser/Documents/blobdumptest', compression=None or 'bz2',
-                      key=None or b'JVGmuw3wRntCc7dcQHJ5q1noUs62ydR0Nw8HpyllKn8=')
-        print(store.addblobs([str(time.localtime()).encode()*3 for i in range(2)], ['5 minutes ago', 'now']))
-        print(next(store.getblobs('now', '2 minutes ago', pull=0), None))
+        store = Store('/home/devuser/Documents/blobdumptest', compression=None and 'bz2',
+                      key=None and b'JVGmuw3wRntCc7dcQHJ5q1noUs62ydR0Nw8HpyllKn8=')
+        store.addblob(b'locy1', 125.)
+        # print(store.addblobs([str(time.localtime()).encode()*3 for i in range(2)], ['5 minutes ago', 'now']))
+        # print(next(store.getblobs('now', '2 minutes ago', pull=0), None))
     except Exception:
         time.sleep(.01)  # Wait for logs to flush.
         raise
