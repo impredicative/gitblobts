@@ -1,7 +1,6 @@
 import calendar
 import dataclasses
 import importlib
-import inspect
 import itertools
 import logging
 import math
@@ -9,7 +8,7 @@ import pathlib
 import secrets
 import time
 import typing
-from typing import Any, Iterable, Iterator, List, Optional, Union
+from typing import Iterable, Iterator, List, Optional, Union
 
 import cryptography.fernet
 import dateparser
@@ -43,7 +42,7 @@ class Store:
         self._encryption = cryptography.fernet.Fernet(key) if key else None
         self._repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
         self._int_merger = IntMerger(config.NUM_RANDOM_BITS)
-        self._int_encoder = IntBaseEncoder('b16', signed=True)
+        self._int_encoder = IntBaseEncoder('b32', signed=True)
         self._log_state()
         self._check_repo()
 
@@ -51,12 +50,14 @@ class Store:
         random: int = secrets.randbits(config.NUM_RANDOM_BITS)
         merged: int = self._int_merger.merge(time_utc_ns, random)
         encoded: bytes = self._int_encoder.encode(merged)
-        return encoded.decode()
+        filename: str = encoded.decode()
+        return filename
 
-    def _decode_time(self, filename: str) -> int:
-        encoded: bytes = filename.encode()
+    def _decode_time(self, filepath: pathlib.Path) -> int:
+        encoded: bytes = filepath.name.encode()
         merged: int = self._int_encoder.decode(encoded)
-        return self._int_merger.split(merged)[0]
+        time_utc_ns: int = self._int_merger.split(merged)[0]
+        return time_utc_ns
 
     def _addblob(self, blob: bytes, time_utc: Union[None, Timestamp], *, push: bool) -> int:
         push_state = 'with' if push else 'without'
@@ -67,7 +68,8 @@ class Store:
 
         repo = self._repo
         time_utc_ns = self._standardize_time_to_ns(time_utc)
-        path = self._path / self._encode_time(time_utc_ns)  # This is a non-deterministic new filename.
+        path = self._path / self._encode_time(time_utc_ns)  # Non-deterministic new file path.
+        assert time_utc_ns == self._decode_time(path)
         blob_original = blob
         blob = self._process_in(blob)
         log.debug('Writing %s bytes of timestamp %s to file %s.', len(blob), time_utc_ns, path.name)
@@ -75,12 +77,12 @@ class Store:
         log.info('Wrote %s bytes of timestamp %s to file %s.', len(blob), time_utc_ns, path.name)
 
         repo.index.add([str(path)])
-        log.info('Added file %s to repository index.', path.name)
+        log.info('Added file %s of timestamp %s to repository index.', path.name, time_utc_ns)
         if push:
             self._commit_and_push_repo()
         assert blob_original == self._process_out(path.read_bytes())
-        log.info('Added blob of raw length %s and processed length %s with name %s.', len(blob_original), len(blob),
-                 path.name)
+        log.info('Added blob of raw length %s and processed length %s of timestamp %s with name %s.',
+                 len(blob_original), len(blob), time_utc_ns, path.name)
         return time_utc_ns
 
     def _check_repo(self) -> None:
@@ -222,9 +224,8 @@ class Store:
     def addblobs(self, blobs: Iterable[bytes], times_utc: Optional[Iterable[Timestamp]] = None) -> List[int]:
         log.info('Adding blobs.')
         if times_utc is None:
-            times_utc = []
-        times_utc_ns = [self._addblob(blob, time_utc, push=False) for blob, time_utc in
-                        itertools.zip_longest(blobs, times_utc)]
+            times_utc = itertools.repeat(None)
+        times_utc_ns = [self._addblob(blob, time_utc, push=False) for blob, time_utc in zip(blobs, times_utc)]
         self._commit_and_push_repo()
         log.info('Added %s blobs.', len(times_utc_ns))
         return times_utc_ns
@@ -232,42 +233,37 @@ class Store:
     def getblobs(self, start_utc: Optional[Timestamp] = -math.inf, end_utc: Optional[Timestamp] = math.inf,
                  *, pull: Optional[bool] = False) -> Iterator[Blob]:
         pull_state = 'with' if pull else 'without'
-        log.debug('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
+        log.info('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
 
         def standardize_time_to_ns(time_utc):
-            if time_utc == math.inf:
-                return time_utc
+            try:
+                if not math.isfinite(time_utc):
+                    return time_utc
+            except TypeError:
+                pass
             return self._standardize_time_to_ns(time_utc)
 
         # Note: Either one of start_utc and end_utc can rightfully be smaller.
-        def default_value(arg: str) -> Any:
-            return inspect.signature(self.getblobs).parameters[arg].default
-        start_utc = standardize_time_to_ns(start_utc) if start_utc is not None else default_value('start_utc')
-        end_utc = standardize_time_to_ns(end_utc) if end_utc is not None else default_value('end_utc')
+        start_utc = standardize_time_to_ns(start_utc) if start_utc is not None else -math.inf
+        end_utc = standardize_time_to_ns(end_utc) if end_utc is not None else math.inf
         log.info('Getting blobs from %s to %s UTC %s repository pull.', start_utc, end_utc, pull_state)
-
-        if start_utc == end_utc:
-            log.warning('The effective start and end times are the same. As such, 0 or 1 blobs will be yielded.')
-        elif set([start_utc, end_utc]) == set([0, math.inf]):  # This is a careful check of full range.
-            log.warning('The time range is infinity. As such, all blobs will be yielded.')
 
         if pull:
             self._pull_repo()
-        paths = (path for path in self._path.iterdir() if path.is_file())
+
         if start_utc <= end_utc:
             order = 'ascending'
-            times_utc_ns = (int(path.name) for path in paths if start_utc <= int(path.name) <= end_utc)
-            times_utc_ns = sorted(times_utc_ns)
         else:
             order = 'descending'
-            times_utc_ns = (int(path.name) for path in paths if end_utc <= int(path.name) <= start_utc)
-            times_utc_ns = sorted(times_utc_ns, reverse=True)
-        if times_utc_ns:
-            log.debug('Yielding up to %s blobs in %s chronological order.', len(times_utc_ns), order)
+            start_utc, end_utc = end_utc, start_utc
 
-        for time_utc_ns in times_utc_ns:
-            path = self._path / str(time_utc_ns)
-            log.debug('Yielding blob %s.', path.name)
+        time_path_tuples = ((self._decode_time(path), path) for path in self._path.iterdir() if path.is_file())
+        time_path_tuples = (t, p for t, p in time_path_tuples if start_utc <= t <= end_utc)
+        time_path_tuples = sorted(time_path_tuples, reverse=(order == 'descending'))
+        log.debug('Yielding %s blobs in %s chronological order.', len(time_path_tuples), order)
+
+        for time_utc_ns, path in time_path_tuples:
+            log.debug('Yielding blob having timestamp %s and name %s.', time_utc_ns, path.name)
             yield Blob(time_utc_ns, self._process_out(path.read_bytes()))
-            log.info('Yielded blob %s.', path.name)
-        log.info('Yielded %s blobs.', len(times_utc_ns))
+            log.info('Yielded blob having timestamp %s and name %s.', time_utc_ns, path.name)
+        log.info('Yielded %s blobs.', len(time_path_tuples))
