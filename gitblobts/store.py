@@ -259,7 +259,7 @@ class Store:
             start_utc, end_utc = end_utc, start_utc
 
         time_path_tuples = ((self._decode_time(path), path) for path in self._path.iterdir() if path.is_file())
-        time_path_tuples = (t, p for t, p in time_path_tuples if start_utc <= t <= end_utc)
+        time_path_tuples = ((t, p) for t, p in time_path_tuples if start_utc <= t <= end_utc)
         time_path_tuples = sorted(time_path_tuples, reverse=(order == 'descending'))
         log.debug('Yielding %s blobs in %s chronological order.', len(time_path_tuples), order)
 
