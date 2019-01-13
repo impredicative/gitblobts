@@ -6,6 +6,7 @@ import itertools
 import logging
 import math
 import pathlib
+import secrets
 import time
 import typing
 from typing import Any, Iterable, Iterator, List, Optional, Union
@@ -14,7 +15,9 @@ import cryptography.fernet
 import dateparser
 import git
 
+import gitblobts.config as config
 import gitblobts.exc as exc
+from gitblobts.util import IntBaseEncoder, IntMerger
 
 log = logging.getLogger(__name__)
 
@@ -39,8 +42,21 @@ class Store:
         self._compression = importlib.import_module(compression) if compression else None  # e.g. bz2, gzip, lzma
         self._encryption = cryptography.fernet.Fernet(key) if key else None
         self._repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
+        self._int_merger = IntMerger(config.NUM_RANDOM_BITS)
+        self._int_encoder = IntBaseEncoder('b16', signed=True)
         self._log_state()
         self._check_repo()
+
+    def _encode_time(self, time_utc_ns: int) -> str:
+        random: int = secrets.randbits(config.NUM_RANDOM_BITS)
+        merged: int = self._int_merger.merge(time_utc_ns, random)
+        encoded: bytes = self._int_encoder.encode(merged)
+        return encoded.decode()
+
+    def _decode_time(self, filename: str) -> int:
+        encoded: bytes = filename.encode()
+        merged: int = self._int_encoder.decode(encoded)
+        return self._int_merger.split(merged)[0]
 
     def _addblob(self, blob: bytes, time_utc: Union[None, Timestamp], *, push: bool) -> int:
         push_state = 'with' if push else 'without'
@@ -51,20 +67,12 @@ class Store:
 
         repo = self._repo
         time_utc_ns = self._standardize_time_to_ns(time_utc)
-
-        # Note: Zero left-padding of the filename is intentionally not used as it can lead to comparison errors.
-        while True:  # Use filename that doesn't already exist. Avoid overwriting existing file.
-            path = self._path / str(time_utc_ns)
-            if path.exists():
-                time_utc_ns += 1
-            else:
-                break
-
+        path = self._path / self._encode_time(time_utc_ns)  # This is a non-deterministic new filename.
         blob_original = blob
         blob = self._process_in(blob)
-        log.debug('Writing %s bytes to file %s.', len(blob), path.name)
+        log.debug('Writing %s bytes of timestamp %s to file %s.', len(blob), time_utc_ns, path.name)
         path.write_bytes(blob)
-        log.info('Wrote %s bytes to file %s.', len(blob), path.name)
+        log.info('Wrote %s bytes of timestamp %s to file %s.', len(blob), time_utc_ns, path.name)
 
         repo.index.add([str(path)])
         log.info('Added file %s to repository index.', path.name)
@@ -143,6 +151,7 @@ class Store:
         return self._encryption.encrypt(blob) if self._encryption else blob
 
     def _log_state(self) -> None:
+        log.info('Number of random bits per filename is %s.', config.NUM_RANDOM_BITS)
         log.info('Repository path is "%s".', self._path)
         log.info('Compression is %s.',
                  f'enabled with {self._compression.__name__}' if self._compression else 'not enabled')
@@ -177,9 +186,8 @@ class Store:
             log.info('Pulled from repository remote "%s".', name)
 
     def _standardize_time_to_ns(self, time_utc: Timestamp) -> int:
-        def _convert_seconds_to_positive_ns(seconds: Union[int, float]) -> int:
-            nanoseconds = int(round(seconds * int(1e9)))
-            return max(1, nanoseconds)
+        def _convert_seconds_to_ns(seconds: Union[int, float]) -> int:
+            return int(round(seconds * int(1e9)))
 
         if time_utc is None:
             return time.time_ns()
@@ -188,26 +196,24 @@ class Store:
         elif isinstance(time_utc, float):
             if not math.isfinite(time_utc):
                 raise exc.TimeInvalid(f'Provided time "{time_utc}" must be finite and not NaN for use as a filename.')
-            elif time_utc < 0:
-                raise exc.TimeInvalid(f'Provided time "{time_utc}" must be non-negative for use as a filename.')
-            return _convert_seconds_to_positive_ns(time_utc)
+            return _convert_seconds_to_ns(time_utc)
         elif isinstance(time_utc, time.struct_time):
             if time_utc.tm_zone == 'GMT':
                 time_utc = calendar.timegm(time_utc)
             else:
                 time_utc = time.mktime(time_utc)
-            return _convert_seconds_to_positive_ns(time_utc)
+            return _convert_seconds_to_ns(time_utc)
         elif isinstance(time_utc, str):
             time_utc_input = time_utc
             time_utc = dateparser.parse(time_utc, settings={'TO_TIMEZONE': 'UTC', 'RETURN_AS_TIMEZONE_AWARE': True,
                                                             'PREFER_DATES_FROM': 'past'})
             if time_utc is None:
-                raise exc.TimeInvalid(f'Provided time "{time_utc_input}" could not be parsed. It must be parsable by '
-                                      'dateparser.')
-            return _convert_seconds_to_positive_ns(time_utc.timestamp())
+                raise exc.TimeInvalid(f'Provided time "{time_utc_input}" could not be parsed. It provided as a string, '
+                                      ' it must be parsable by dateparser.')
+            return _convert_seconds_to_ns(time_utc.timestamp())
         else:
             annotation = typing.get_type_hints(self._standardize_time_to_ns)['time_utc']
-            raise exc.TimeUnhandledType(f'Provided time "{time_utc}" is of an unhandled type "{type(time_utc)}. '
+            raise exc.TimeUnhandledType(f'Provided time "{time_utc}" is of an unhandled type "{type(time_utc)}". '
                                         f'It must be conform to {annotation}.')
 
     def addblob(self, blob: bytes, time_utc: Optional[Timestamp] = None) -> int:
@@ -223,17 +229,12 @@ class Store:
         log.info('Added %s blobs.', len(times_utc_ns))
         return times_utc_ns
 
-    def getblobs(self, start_utc: Optional[Timestamp] = 0., end_utc: Optional[Timestamp] = math.inf,
+    def getblobs(self, start_utc: Optional[Timestamp] = -math.inf, end_utc: Optional[Timestamp] = math.inf,
                  *, pull: Optional[bool] = False) -> Iterator[Blob]:
         pull_state = 'with' if pull else 'without'
         log.debug('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
 
         def standardize_time_to_ns(time_utc):
-            try:
-                if time_utc < 0:
-                    return 0  # This is lowest possible filename of timestamp.
-            except TypeError:
-                pass
             if time_utc == math.inf:
                 return time_utc
             return self._standardize_time_to_ns(time_utc)
