@@ -46,19 +46,6 @@ class Store:
         self._log_state()
         self._check_repo()
 
-    def _encode_time(self, time_utc_ns: int) -> str:
-        random: int = secrets.randbits(config.NUM_RANDOM_BITS)
-        merged: int = self._int_merger.merge(time_utc_ns, random)
-        encoded: bytes = self._int_encoder.encode(merged)
-        filename: str = encoded.decode()
-        return filename
-
-    def _decode_time(self, filepath: pathlib.Path) -> int:
-        encoded: bytes = filepath.name.encode()
-        merged: int = self._int_encoder.decode(encoded)
-        time_utc_ns: int = self._int_merger.split(merged)[0]
-        return time_utc_ns
-
     def _addblob(self, blob: bytes, time_utc: Union[None, Timestamp], *, push: bool) -> int:
         push_state = 'with' if push else 'without'
         log.info('Adding blob of length %s and time "%s" %s repository push.', len(blob), time_utc, push_state)
@@ -71,7 +58,7 @@ class Store:
         path = self._path / self._encode_time(time_utc_ns)  # Non-deterministic new file path.
         assert time_utc_ns == self._decode_time(path)
         blob_original = blob
-        blob = self._process_in(blob)
+        blob = self._ingress_blob(blob)
         log.debug('Writing %s bytes of timestamp %s to file %s.', len(blob), time_utc_ns, path.name)
         path.write_bytes(blob)
         log.info('Wrote %s bytes of timestamp %s to file %s.', len(blob), time_utc_ns, path.name)
@@ -80,7 +67,7 @@ class Store:
         log.info('Added file %s of timestamp %s to repository index.', path.name, time_utc_ns)
         if push:
             self._commit_and_push_repo()
-        assert blob_original == self._process_out(path.read_bytes())
+        assert blob_original == self._egress_blob(path.read_bytes())
         log.info('Added blob of raw length %s and processed length %s of timestamp %s with name %s.',
                  len(blob_original), len(blob), time_utc_ns, path.name)
         return time_utc_ns
@@ -136,21 +123,40 @@ class Store:
                 raise exc.RepoPushError(f'Failed to push to repository remote "{remote.name}" despite a pull.')
         log.info('Pushed to repository remote "%s".', remote.name)
 
-    def _compress(self, blob: bytes) -> bytes:
+    def _compress_blob(self, blob: bytes) -> bytes:
         log.debug('Compressing blob.') if self._compression else log.debug('Skipping blob compression.')
         return self._compression.compress(blob) if self._compression else blob
 
-    def _decompress(self, blob: bytes) -> bytes:
+    def _decode_time(self, filepath: pathlib.Path) -> int:
+        encoded: bytes = filepath.name.encode()
+        merged: int = self._int_encoder.decode(encoded)
+        time_utc_ns: int = self._int_merger.split(merged)[0]
+        return time_utc_ns
+
+    def _decompress_blob(self, blob: bytes) -> bytes:
         log.debug('Decompressing blob.') if self._compression else log.debug('Skipping blob decompression.')
         return self._compression.decompress(blob) if self._compression else blob
 
-    def _decrypt(self, blob: bytes) -> bytes:
+    def _decrypt_blob(self, blob: bytes) -> bytes:
         log.debug('Decrypting blob.') if self._encryption else log.debug('Skipping blob decryption.')
         return self._encryption.decrypt(blob) if self._encryption else blob
 
-    def _encrypt(self, blob: bytes) -> bytes:
+    def _egress_blob(self, blob: bytes) -> bytes:
+        return self._decompress_blob(self._decrypt_blob(blob))
+
+    def _encode_time(self, time_utc_ns: int) -> str:
+        random: int = secrets.randbits(config.NUM_RANDOM_BITS)
+        merged: int = self._int_merger.merge(time_utc_ns, random)
+        encoded: bytes = self._int_encoder.encode(merged)
+        filename: str = encoded.decode()
+        return filename
+
+    def _encrypt_blob(self, blob: bytes) -> bytes:
         log.debug('Encrypting blob.') if self._encryption else log.debug('Skipping blob encryption.')
         return self._encryption.encrypt(blob) if self._encryption else blob
+
+    def _ingress_blob(self, blob: bytes) -> bytes:
+        return self._encrypt_blob(self._compress_blob(blob))
 
     def _log_state(self) -> None:
         log.info('Number of random bits per filename is %s.', config.NUM_RANDOM_BITS)
@@ -159,12 +165,6 @@ class Store:
                  f'enabled with {self._compression.__name__}' if self._compression else 'not enabled')
         log.info('Encryption is %s.',
                  f'enabled with {self._encryption.__class__.__name__}' if self._encryption else 'not enabled')
-
-    def _process_in(self, blob: bytes) -> bytes:
-        return self._encrypt(self._compress(blob))
-
-    def _process_out(self, blob: bytes) -> bytes:
-        return self._decompress(self._decrypt(blob))
 
     def _pull_repo(self) -> None:
         remote = self._repo.remote()
@@ -200,10 +200,8 @@ class Store:
                 raise exc.TimeInvalid(f'Provided time "{time_utc}" must be finite and not NaN for use as a filename.')
             return _convert_seconds_to_ns(time_utc)
         elif isinstance(time_utc, time.struct_time):
-            if time_utc.tm_zone == 'GMT':
-                time_utc = calendar.timegm(time_utc)
-            else:
-                time_utc = time.mktime(time_utc)
+            time_utc = calendar.timegm(time_utc) if time_utc.tm_zone == 'GMT' else time.mktime(time_utc)
+            # Note: Above conversion is per From-To-Use conversion table at https://docs.python.org/library/time.html
             return _convert_seconds_to_ns(time_utc)
         elif isinstance(time_utc, str):
             time_utc_input = time_utc
@@ -235,17 +233,19 @@ class Store:
         pull_state = 'with' if pull else 'without'
         log.info('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
 
-        def standardize_time_to_ns(time_utc):
-            try:
+        def standardize_time_to_ns(time_utc: Timestamp, *, default: float) -> Union[int, float]:
+            if time_utc is None:
+                return default
+            if isinstance(time_utc, float):
+                if math.isnan(time_utc):
+                    return default
                 if not math.isfinite(time_utc):
                     return time_utc
-            except TypeError:
-                pass
             return self._standardize_time_to_ns(time_utc)
 
         # Note: Either one of start_utc and end_utc can rightfully be smaller.
-        start_utc = standardize_time_to_ns(start_utc) if start_utc is not None else -math.inf
-        end_utc = standardize_time_to_ns(end_utc) if end_utc is not None else math.inf
+        start_utc = standardize_time_to_ns(start_utc, default=-math.inf)
+        end_utc = standardize_time_to_ns(end_utc, default=math.inf)
         log.info('Getting blobs from %s to %s UTC %s repository pull.', start_utc, end_utc, pull_state)
 
         if pull:
@@ -254,6 +254,7 @@ class Store:
         if start_utc <= end_utc:
             order = 'ascending'
         else:
+            assert end_utc > start_utc
             order = 'descending'
             start_utc, end_utc = end_utc, start_utc
 
@@ -264,6 +265,6 @@ class Store:
 
         for time_utc_ns, path in time_path_tuples:
             log.debug('Yielding blob having timestamp %s and name %s.', time_utc_ns, path.name)
-            yield Blob(time_utc_ns, self._process_out(path.read_bytes()))
+            yield Blob(time_utc_ns, self._egress_blob(path.read_bytes()))
             log.info('Yielded blob having timestamp %s and name %s.', time_utc_ns, path.name)
         log.info('Yielded %s blobs.', len(time_path_tuples))
