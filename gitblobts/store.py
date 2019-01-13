@@ -42,7 +42,7 @@ class Store:
         self._encryption = cryptography.fernet.Fernet(key) if key else None
         self._repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
         self._int_merger = IntMerger(config.NUM_RANDOM_BITS)
-        self._int_encoder = IntBaseEncoder('b64', signed=True)
+        self._int_encoder = IntBaseEncoder('urlsafe_b64', signed=True)  # Don't use "b64" as it's not filesystem safe.
         self._log_state()
         self._check_repo()
 
@@ -57,9 +57,9 @@ class Store:
         time_utc_ns = self._standardize_time_to_ns(time_utc)
         path = self._path / self._encode_time(time_utc_ns)  # Non-deterministic new file path.
         decoded_time_utc_ns = self._decode_time(path)
-        assert_error_msg = f'Time {time_utc_ns} was encoded to name {path.name} which was then decoded to a ' \
+        assert_error = f'Time {time_utc_ns} was encoded to name {path.name} which was then decoded to a ' \
             f'different time {decoded_time_utc_ns}.'
-        assert time_utc_ns == decoded_time_utc_ns, assert_error_msg
+        assert time_utc_ns == decoded_time_utc_ns, assert_error
         blob_original = blob
         blob = self._ingress_blob(blob)
         log.debug('Writing %s bytes of timestamp %s to file %s.', len(blob), time_utc_ns, path.name)
