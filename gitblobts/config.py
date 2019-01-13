@@ -1,6 +1,8 @@
 import logging.config
 from pathlib import Path
 
+NUM_RANDOM_BITS = 256
+
 
 def configure_logging() -> None:
     path = Path(__file__).with_name('logging.conf')
