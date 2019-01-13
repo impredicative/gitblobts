@@ -42,7 +42,7 @@ class Store:
         self._encryption = cryptography.fernet.Fernet(key) if key else None
         self._repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
         self._int_merger = IntMerger(config.NUM_RANDOM_BITS)
-        self._int_encoder = IntBaseEncoder('urlsafe_b64', signed=True)  # Don't use "b64" as it's not filesystem safe.
+        self._int_encoder = IntBaseEncoder(config.FILENAME_ENCODING, signed=True)
         self._log_state()
         self._check_repo()
 
