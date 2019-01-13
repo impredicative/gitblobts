@@ -128,9 +128,11 @@ class Store:
         return self._compression.compress(blob) if self._compression else blob
 
     def _decode_time(self, filepath: pathlib.Path) -> int:
-        encoded: bytes = filepath.name.encode()
+        filename: str = filepath.name
+        encoded: bytes = filename.encode()
         merged: int = self._int_encoder.decode(encoded)
         time_utc_ns: int = self._int_merger.split(merged)[0]
+        log.debug('Decoded time %s from file %s.', time_utc_ns, filepath.name)
         return time_utc_ns
 
     def _decompress_blob(self, blob: bytes) -> bytes:
@@ -149,6 +151,7 @@ class Store:
         merged: int = self._int_merger.merge(time_utc_ns, random)
         encoded: bytes = self._int_encoder.encode(merged)
         filename: str = encoded.decode()
+        log.debug('Encoded time %s to file %s.', time_utc_ns, filename)
         return filename
 
     def _encrypt_blob(self, blob: bytes) -> bytes:
