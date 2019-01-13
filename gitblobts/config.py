@@ -1,7 +1,7 @@
 import logging.config
 from pathlib import Path
 
-FILENAME_ENCODING = 'b32'  # urlsafe_b64 is okay, but not b64.
+FILENAME_ENCODING = 'urlsafe_b64'  # Options: urlsafe_b64, b32, b16
 NUM_RANDOM_BITS = 256
 
 
