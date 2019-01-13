@@ -5,17 +5,14 @@ Even so, a lock-in of the stored files with git is avoided.
 
 Its goal is to ensure availability of data both locally and remotely.
 It stores each blob as a file in a preexisting local and remote git repository.
-The name of the file is a high-resolution nanosecond UTC timestamp.
+The name of the file is an encoded nanosecond UTC timestamp.
 
 Given the pull and push actions of git, collaborative use of the same remote repo is supported.
-Having said that, if multiple users attempt to push a file with the same timestamp to the same remote repo, this
-leads to a merge conflict, and the `gitblobts.exc.RepoPushError` exception is raised.
+To prevent merge conflicts, there is a one-to-many mapping of timestamp-to-file.
 
 Subsequent retrieval of the blobs is by a UTC time range.
 At this time there is no implemented method to remove or overwrite a blob; this is by design.
 From the perspective of the package, once a blob is written, it is considered read-only.
-If an attempt is made to write a blob with the same timestamp as a preexisting blob, the supplied timestamp will be
-incremented, and a new blob will be written to a new file.
 
 An effort has been made to keep third-party package requirements to a minimum.
 As the code is in an early stage, the implementation should be reviewed before use.
@@ -23,7 +20,7 @@ As the code is in an early stage, the implementation should be reviewed before u
 ## Installation
 Using Python 3.7+, run `pip install gitblobts` (pending). Older version of Python will not work.
 This is due to a reliance on [`time_ns`](https://docs.python.org/3/library/time.html#time.time_ns).
-This function doesn't exist in older versions.
+This function doesn't exist in older versions of Python.
 
 ## Usage
 
@@ -65,7 +62,7 @@ blobs3_descending: List[Blob] = list(store.getblobs(start_utc=time.time(), end_u
 ```
 
 ## To do
-* Handle merge conflict.
+* Avoid merge conflicts.
 * Publish to pypi.
 * Add tests, also refactoring the code to be more testable.
 * Add documentation.
