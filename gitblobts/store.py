@@ -42,7 +42,7 @@ class Store:
         self._encryption = cryptography.fernet.Fernet(key) if key else None
         self._repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
         self._int_merger = IntMerger(config.NUM_RANDOM_BITS)
-        self._int_encoder = IntBaseEncoder('b32', signed=True)
+        self._int_encoder = IntBaseEncoder('b64', signed=True)
         self._log_state()
         self._check_repo()
 
@@ -56,7 +56,10 @@ class Store:
         repo = self._repo
         time_utc_ns = self._standardize_time_to_ns(time_utc)
         path = self._path / self._encode_time(time_utc_ns)  # Non-deterministic new file path.
-        assert time_utc_ns == self._decode_time(path)
+        decoded_time_utc_ns = self._decode_time(path)
+        assert_error_msg = f'Time {time_utc_ns} was encoded to name {path.name} which was then decoded to a ' \
+            f'different time {decoded_time_utc_ns}.'
+        assert time_utc_ns == decoded_time_utc_ns, assert_error_msg
         blob_original = blob
         blob = self._ingress_blob(blob)
         log.debug('Writing %s bytes of timestamp %s to file %s.', len(blob), time_utc_ns, path.name)
@@ -132,7 +135,6 @@ class Store:
         encoded: bytes = filename.encode()
         merged: int = self._int_encoder.decode(encoded)
         time_utc_ns: int = self._int_merger.split(merged)[0]
-        log.debug('Decoded time %s from file %s.', time_utc_ns, filepath.name)
         return time_utc_ns
 
     def _decompress_blob(self, blob: bytes) -> bytes:
@@ -151,7 +153,6 @@ class Store:
         merged: int = self._int_merger.merge(time_utc_ns, random)
         encoded: bytes = self._int_encoder.encode(merged)
         filename: str = encoded.decode()
-        log.debug('Encoded time %s to file %s.', time_utc_ns, filename)
         return filename
 
     def _encrypt_blob(self, blob: bytes) -> bytes:
