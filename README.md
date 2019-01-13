@@ -13,6 +13,7 @@ To prevent merge conflicts, there is a one-to-many mapping of timestamp-to-file.
 Subsequent retrieval of the blobs is by a UTC time range.
 At this time there is no implemented method to remove or overwrite a blob; this is by design.
 From the perspective of the package, once a blob is written, it is considered read-only.
+An attempt to add a blob with the same timestamp as a preexisting blob will result in a new blob.
 
 An effort has been made to keep third-party package requirements to a minimum.
 As the code is in an early stage, the implementation should be reviewed before use.
