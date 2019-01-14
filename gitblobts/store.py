@@ -133,11 +133,12 @@ class Store:
         return self._compression.compress(blob) if self._compression else blob
 
     def _decode_name(self, filepath: pathlib.Path) -> int:
-        version = self._file_suffix_encoder.decode(filepath.suffix)
+        version: bytes = filepath.suffix.encode()
+        version: int = self._file_suffix_encoder.decode(version)
         if version > config.FILE_VERSION:
-            raise exc.BlobVersionUnsupported('Blob with name %s is of file format version %s which is not supported. '
-                                             'Consider a newer version of this package.',
-                                             filepath.name, version, config.FILE_VERSION)
+            msg = f'Blob with name {filepath.name} is of file format version {version} which is not supported. ' \
+                f'The highest supported version is {config.FILE_VERSION}. Consider a newer version of this package.'
+            raise exc.BlobVersionUnsupported(msg)
         stem: bytes = filepath.stem.encode()
         stem: int = self._file_stem_encoder.decode(stem)
         time_utc_ns: int = self._int_merger.split(stem)[0]
