@@ -156,8 +156,8 @@ class Store:
 
     def _encode_name(self, time_utc_ns: int) -> str:
         random: int = secrets.randbits(config.NUM_RANDOM_BITS)
-        merged: int = self._int_merger.merge(time_utc_ns, random)
-        stem: str = self._file_stem_encoder.encode(merged).decode()
+        stem: int = self._int_merger.merge(time_utc_ns, random)
+        stem: str = self._file_stem_encoder.encode(stem).decode()
         filename: str = f'{stem}.{self._file_suffix_encoded}'
         return filename
 
