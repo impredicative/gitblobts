@@ -107,7 +107,8 @@ class Store:
         log.info('Committed repository index.')
 
         def _is_pushed(push_info: git.remote.PushInfo) -> bool:
-            return push_info.flags == push_info.FAST_FORWARD  # This check can require the use of & instead.
+            valid_flags = {push_info.FAST_FORWARD, push_info.NEW_HEAD}  # UP_TO_DATE flag is intentionally skipped.
+            return push_info.flags in valid_flags  # This check can require the use of & instead.
 
         remote = repo.remote()
         log.debug('Pushing to repository remote "%s".', remote.name)
