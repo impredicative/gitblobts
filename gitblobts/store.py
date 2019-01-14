@@ -228,7 +228,8 @@ class Store:
         if times_utc is None:
             times_utc = itertools.repeat(None)
         times_utc_ns = [self._addblob(blob, time_utc, push=False) for blob, time_utc in zip(blobs, times_utc)]
-        self._commit_and_push_repo()
+        if times_utc_ns:
+            self._commit_and_push_repo()
         log.info('Added %s blobs.', len(times_utc_ns))
         return times_utc_ns
 
