@@ -2,13 +2,15 @@
 
 `gitblobts` is an experimental Python package for git-backed time-indexed blob storage.
 Even so, a lock-in of the stored files with git is avoided.
+Moreover, so long as encryption is not used, a lock-in of the file contents with this application is also avoided.
 
 Its goal is to ensure availability of data both locally and remotely.
 It stores each blob as a file in a preexisting local and remote git repository.
-The name of the file is an encoded nanosecond UTC timestamp.
+Each filename contains an encoded nanosecond UTC timestamp and a format version number.
 
 Given the pull and push actions of git, collaborative use of the same remote repo is supported.
 To prevent merge conflicts, there is a one-to-many mapping of timestamp-to-file.
+This is accomplished by including sufficient random bytes in the filename to ensure uniqueness.
 
 Subsequent retrieval of the blobs is by a UTC time range.
 At this time there is no implemented method to remove or overwrite a blob; this is by design.
@@ -52,7 +54,7 @@ import time
 
 store = Store('/path_to/preexisting_git_repo', compression='gzip', key=b'JVGmuw3wRntCc7dcQHJ5q1noUs62ydR0Nw8HpyllKn8=')
 
-blobs: List[Blob] = list(store.getblobs())
+blobs: List[Blob] = list(store.getblobs(pull=False))
 blobs_bytes: List[bytes] = [b.blob for b in blobs]
 times_utc_ns: List[int] = [b.time_utc_ns for b in blobs]
 
