@@ -129,42 +129,54 @@ class Store:
         log.info('Pushed to repository remote "%s".', remote.name)
 
     def _compress_blob(self, blob: bytes) -> bytes:
-        log.debug('Compressing blob.') if self._compression else log.debug('Skipping blob compression.')
-        return self._compression.compress(blob) if self._compression else blob
+        if self._compression:
+            log.debug('Compressing blob.')
+            return self._compression.compress(blob)  # type: ignore
+        log.debug('Skipping blob compression.')
+        return blob
 
     def _decode_name(self, filepath: pathlib.Path) -> int:
-        version: bytes = filepath.suffix.encode()
-        version: int = self._file_suffix_encoder.decode(version)
+        _version: bytes = filepath.suffix.encode()
+        version: int = self._file_suffix_encoder.decode(_version)
         if version > config.FILE_VERSION:
             msg = f'Blob with name {filepath.name} is of file format version {version} which is not supported. ' \
                 f'The highest supported version is {config.FILE_VERSION}. Consider a newer version of this package.'
             raise exc.BlobVersionUnsupported(msg)
-        stem: bytes = filepath.stem.encode()
-        stem: int = self._file_stem_encoder.decode(stem)
+        _stem: bytes = filepath.stem.encode()
+        stem: int = self._file_stem_encoder.decode(_stem)
         time_utc_ns: int = self._int_merger.split(stem)[0]
         return time_utc_ns
 
     def _decompress_blob(self, blob: bytes) -> bytes:
-        log.debug('Decompressing blob.') if self._compression else log.debug('Skipping blob decompression.')
-        return self._compression.decompress(blob) if self._compression else blob
+        if self._compression:
+            log.debug('Decompressing blob.')
+            return self._compression.decompress(blob)  # type: ignore
+        log.debug('Skipping blob decompression.')
+        return blob
 
     def _decrypt_blob(self, blob: bytes) -> bytes:
-        log.debug('Decrypting blob.') if self._encryption else log.debug('Skipping blob decryption.')
-        return self._encryption.decrypt(blob) if self._encryption else blob
+        if self._encryption:
+            log.debug('Decrypting blob.')
+            return self._encryption.decrypt(blob)
+        log.debug('Skipping blob decryption.')
+        return blob
 
     def _egress_blob(self, blob: bytes) -> bytes:
         return self._decompress_blob(self._decrypt_blob(blob))
 
     def _encode_name(self, time_utc_ns: int) -> str:
         random: int = secrets.randbits(config.NUM_RANDOM_BITS)
-        stem: int = self._int_merger.merge(time_utc_ns, random)
-        stem: str = self._file_stem_encoder.encode(stem).decode()
+        _stem: int = self._int_merger.merge(time_utc_ns, random)
+        stem: str = self._file_stem_encoder.encode(_stem).decode()
         filename: str = f'{stem}.{self._file_suffix_encoded}'
         return filename
 
     def _encrypt_blob(self, blob: bytes) -> bytes:
-        log.debug('Encrypting blob.') if self._encryption else log.debug('Skipping blob encryption.')
-        return self._encryption.encrypt(blob) if self._encryption else blob
+        if self._encryption:
+            log.debug('Encrypting blob.')
+            return self._encryption.encrypt(blob)
+        log.debug('Skipping blob encryption.')
+        return blob
 
     def _ingress_blob(self, blob: bytes) -> bytes:
         return self._encrypt_blob(self._compress_blob(blob))
@@ -217,13 +229,12 @@ class Store:
             # Note: Above conversion is per From-To-Use conversion table at https://docs.python.org/library/time.html
             return _convert_seconds_to_ns(time_utc)
         elif isinstance(time_utc, str):
-            time_utc_input = time_utc
-            time_utc = dateparser.parse(time_utc, settings={'TO_TIMEZONE': 'UTC', 'RETURN_AS_TIMEZONE_AWARE': True,
+            time_utc_dt = dateparser.parse(time_utc, settings={'TO_TIMEZONE': 'UTC', 'RETURN_AS_TIMEZONE_AWARE': True,
                                                             'PREFER_DATES_FROM': 'past'})
-            if time_utc is None:
-                raise exc.TimeInvalid(f'Provided time "{time_utc_input}" could not be parsed. It provided as a string, '
+            if time_utc_dt is None:
+                raise exc.TimeInvalid(f'Provided time "{time_utc}" could not be parsed. It provided as a string, '
                                       'it must be parsable by dateparser.')
-            return _convert_seconds_to_ns(time_utc.timestamp())
+            return _convert_seconds_to_ns(time_utc_dt.timestamp())
         else:
             annotation = typing.get_type_hints(self._standardize_time_to_ns)['time_utc']
             raise exc.TimeUnhandledType(f'Provided time "{time_utc}" is of an unhandled type "{type(time_utc)}". '
@@ -273,11 +284,11 @@ class Store:
 
         time_path_tuples = ((self._decode_name(path), path) for path in self._path.iterdir() if path.is_file())
         time_path_tuples = ((t, p) for t, p in time_path_tuples if start_utc <= t <= end_utc)
-        time_path_tuples = sorted(time_path_tuples, reverse=(order == 'descending'))
-        log.debug('Yielding %s blobs in %s chronological order.', len(time_path_tuples), order)
+        time_path_tuples = sorted(time_path_tuples, reverse=(order == 'descending'))  # type: ignore
+        log.debug('Yielding %s blobs in %s chronological order.', len(time_path_tuples), order)  # type: ignore
 
         for time_utc_ns, path in time_path_tuples:
             log.debug('Yielding blob having timestamp %s and name %s.', time_utc_ns, path.name)
             yield Blob(time_utc_ns, self._egress_blob(path.read_bytes()))
             log.info('Yielded blob having timestamp %s and name %s.', time_utc_ns, path.name)
-        log.info('Yielded %s blobs.', len(time_path_tuples))
+        log.info('Yielded %s blobs.', len(time_path_tuples))  # type: ignore

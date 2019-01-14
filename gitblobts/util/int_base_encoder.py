@@ -16,7 +16,7 @@ class IntBaseEncoder:
         self._decoder: Callable[[bytes], bytes] = getattr(base64, f'{encoding}decode')
         self._encoder: Callable[[bytes], bytes] = getattr(base64, f'{encoding}encode')
         self.signed: bool = signed
-        self.bytes_length: int = bits and self._bytes_length(2 ** bits - 1)
+        self.bytes_length: Optional[int] = bits and self._bytes_length(2 ** bits - 1)
 
     def _bytes_length(self, i: int) -> int:
         return (i.bit_length() + 7 + self.signed) // 8
