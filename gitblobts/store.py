@@ -39,8 +39,8 @@ class Store:
                  key: Optional[bytes] = None):
         self._path: pathlib.Path = pathlib.Path(path)
         self._compression = importlib.import_module(compression) if compression else None  # e.g. bz2, gzip, lzma
-        self._encryption = cryptography.fernet.Fernet(key) if key else None
-        self._repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
+        self._encryption: cryptography.fernet.Fernet = cryptography.fernet.Fernet(key) if key else None
+        self._repo: git.Repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
         self._int_merger: IntMerger = IntMerger(config.NUM_RANDOM_BITS)
         self._file_stem_encoder: IntBaseEncoder = IntBaseEncoder(config.FILENAME_ENCODING, signed=True)
         self._file_suffix_encoder: IntBaseEncoder = IntBaseEncoder(config.FILENAME_ENCODING, signed=False)
