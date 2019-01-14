@@ -175,7 +175,8 @@ class Store:
                  f'enabled with {self._compression.__name__}' if self._compression else 'not enabled')
         log.info('Encryption is %s.',
                  f'enabled with {self._encryption.__class__.__name__}' if self._encryption else 'not enabled')
-        log.info('File version for new files is %s, encoded to %s.', config.FILE_VERSION, self._file_suffix_encoded)
+        log.info('File version for new files is %s, encoded to filename suffix %s.',
+                 config.FILE_VERSION, self._file_suffix_encoded)
 
     def _pull_repo(self) -> None:
         remote = self._repo.remote()
