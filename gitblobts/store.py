@@ -213,7 +213,7 @@ class Store:
                                                             'PREFER_DATES_FROM': 'past'})
             if time_utc is None:
                 raise exc.TimeInvalid(f'Provided time "{time_utc_input}" could not be parsed. It provided as a string, '
-                                      ' it must be parsable by dateparser.')
+                                      'it must be parsable by dateparser.')
             return _convert_seconds_to_ns(time_utc.timestamp())
         else:
             annotation = typing.get_type_hints(self._standardize_time_to_ns)['time_utc']
