@@ -49,6 +49,10 @@ class BlobTypeInvalid(BlobError):
     pass
 
 
+class BlobVersionUnsupported(BlobError):
+    pass
+
+
 class TimeError(StoreError):
     pass
 

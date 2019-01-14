@@ -37,12 +37,14 @@ class Store:
 
     def __init__(self, path: Union[str, pathlib.Path], *, compression: Optional[str] = None,
                  key: Optional[bytes] = None):
-        self._path = pathlib.Path(path)
+        self._path: pathlib.Path = pathlib.Path(path)
         self._compression = importlib.import_module(compression) if compression else None  # e.g. bz2, gzip, lzma
         self._encryption = cryptography.fernet.Fernet(key) if key else None
         self._repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
-        self._int_merger = IntMerger(config.NUM_RANDOM_BITS)
-        self._int_encoder = IntBaseEncoder(config.FILENAME_ENCODING, signed=True)
+        self._int_merger: IntMerger = IntMerger(config.NUM_RANDOM_BITS)
+        self._file_stem_encoder: IntBaseEncoder = IntBaseEncoder(config.FILENAME_ENCODING, signed=True)
+        self._file_suffix_encoder: IntBaseEncoder = IntBaseEncoder(config.FILENAME_ENCODING, signed=False)
+        self._file_suffix_encoded: str = self._file_suffix_encoder.encode(config.FILE_VERSION).decode()
         self._log_state()
         self._check_repo()
 
@@ -55,8 +57,8 @@ class Store:
 
         repo = self._repo
         time_utc_ns = self._standardize_time_to_ns(time_utc)
-        path = self._path / self._encode_time(time_utc_ns)  # Non-deterministic new file path.
-        decoded_time_utc_ns = self._decode_time(path)
+        path = self._path / self._encode_name(time_utc_ns)  # Non-deterministic new file path.
+        decoded_time_utc_ns = self._decode_name(path)
         assert_error = f'Time {time_utc_ns} was encoded to name {path.name} which was then decoded to a ' \
             f'different time {decoded_time_utc_ns}.'
         assert time_utc_ns == decoded_time_utc_ns, assert_error
@@ -130,11 +132,15 @@ class Store:
         log.debug('Compressing blob.') if self._compression else log.debug('Skipping blob compression.')
         return self._compression.compress(blob) if self._compression else blob
 
-    def _decode_time(self, filepath: pathlib.Path) -> int:
-        filename: str = filepath.name
-        encoded: bytes = filename.encode()
-        merged: int = self._int_encoder.decode(encoded)
-        time_utc_ns: int = self._int_merger.split(merged)[0]
+    def _decode_name(self, filepath: pathlib.Path) -> int:
+        version = self._file_suffix_encoder.decode(filepath.suffix)
+        if version > config.FILE_VERSION:
+            raise exc.BlobVersionUnsupported('Blob with name %s is of file format version %s which is not supported. '
+                                             'Consider a newer version of this package.',
+                                             filepath.name, version, config.FILE_VERSION)
+        stem: bytes = filepath.stem.encode()
+        stem: int = self._file_stem_encoder.decode(stem)
+        time_utc_ns: int = self._int_merger.split(stem)[0]
         return time_utc_ns
 
     def _decompress_blob(self, blob: bytes) -> bytes:
@@ -148,11 +154,11 @@ class Store:
     def _egress_blob(self, blob: bytes) -> bytes:
         return self._decompress_blob(self._decrypt_blob(blob))
 
-    def _encode_time(self, time_utc_ns: int) -> str:
+    def _encode_name(self, time_utc_ns: int) -> str:
         random: int = secrets.randbits(config.NUM_RANDOM_BITS)
         merged: int = self._int_merger.merge(time_utc_ns, random)
-        encoded: bytes = self._int_encoder.encode(merged)
-        filename: str = encoded.decode()
+        stem: str = self._file_stem_encoder.encode(merged).decode()
+        filename: str = f'{stem}.{self._file_suffix_encoded}'
         return filename
 
     def _encrypt_blob(self, blob: bytes) -> bytes:
@@ -169,6 +175,7 @@ class Store:
                  f'enabled with {self._compression.__name__}' if self._compression else 'not enabled')
         log.info('Encryption is %s.',
                  f'enabled with {self._encryption.__class__.__name__}' if self._encryption else 'not enabled')
+        log.info('File version for new files is %s, encoded to %s.', config.FILE_VERSION, self._file_suffix_encoded)
 
     def _pull_repo(self) -> None:
         remote = self._repo.remote()
@@ -262,7 +269,7 @@ class Store:
             order = 'descending'
             start_utc, end_utc = end_utc, start_utc
 
-        time_path_tuples = ((self._decode_time(path), path) for path in self._path.iterdir() if path.is_file())
+        time_path_tuples = ((self._decode_name(path), path) for path in self._path.iterdir() if path.is_file())
         time_path_tuples = ((t, p) for t, p in time_path_tuples if start_utc <= t <= end_utc)
         time_path_tuples = sorted(time_path_tuples, reverse=(order == 'descending'))
         log.debug('Yielding %s blobs in %s chronological order.', len(time_path_tuples), order)
