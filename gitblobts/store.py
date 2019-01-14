@@ -204,7 +204,7 @@ class Store:
         try:
             pull_info = remote.pull()[0]
         except git.exc.GitCommandError:  # Could be due to no push ever.
-            log.warning('Failed to pull from repository remote "%s".', name)
+            log.warning('Failed to pull from repository remote "%s". Perhaps there is no matching remote branch.', name)
         else:
             is_pulled = _is_pulled(pull_info)
             logger = log.debug if is_pulled else log.error
