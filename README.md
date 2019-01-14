@@ -6,7 +6,7 @@ If encryption is not used, a lock-in of the file contents with this application 
 
 Its goal is to ensure availability of data both locally and remotely.
 It stores each blob as a file in a preexisting local and remote git repository.
-Each filename contains an encoded nanosecond UTC timestamp and a format version number.
+Each filename contains an encoded nanosecond UTC timestamp and format version number.
 
 Given the pull and push actions of git, collaborative use of the same remote repo is supported.
 To prevent merge conflicts, there is a one-to-many mapping of timestamp-to-filename.
