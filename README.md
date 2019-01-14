@@ -2,7 +2,7 @@
 
 `gitblobts` is an experimental Python package for git-backed time-indexed blob storage.
 Even so, a lock-in of the stored files with git is avoided.
-If encryption is not used, a lock-in of the file contents with this application is also avoided.
+If encryption is not enabled, a lock-in of the file contents with this application is also avoided.
 
 Its goal is to ensure availability of data both locally and remotely.
 It stores each blob as a file in a preexisting local and remote git repository.
@@ -34,8 +34,8 @@ import datetime, gitblobts, json, time, urllib.request
 
 optional_compression_module_name: Optional[str] = [None, 'bz2', 'gzip', 'lzma'][2]
 optional_user_saved_encryption_key: Optional[bytes] = [None, gitblobts.generate_key()][1]
-store = gitblobts.Store('/path_to/preexisting_git_repo', compression=optional_compression_module_name,
-                        key=optional_user_saved_encryption_key)
+store = gitblobts.Store('/path_to/preexisting_git_repo',
+                        compression=optional_compression_module_name, key=optional_user_saved_encryption_key)
 
 filename1_as_time_utc_ns: int = store.addblob('a byte encoded string'.encode())
 filename2_as_time_utc_ns: int = store.addblob(b'some bytes' * 1000, time_utc=time.time())
