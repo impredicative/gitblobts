@@ -1,9 +1,9 @@
 import logging.config
 from pathlib import Path
 
-FILE_VERSION = 1
-FILENAME_ENCODING = 'urlsafe_b64'  # Options: urlsafe_b64, b32, b16
-NUM_RANDOM_BITS = 256
+FILE_VERSION: int = 1
+FILENAME_ENCODING: str = 'urlsafe_b64'  # Options: urlsafe_b64, b32, b16
+NUM_RANDOM_BITS: int = 256
 
 
 def configure_logging() -> None:
