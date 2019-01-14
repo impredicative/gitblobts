@@ -37,8 +37,8 @@ optional_user_saved_encryption_key: Optional[bytes] = [None, gitblobts.generate_
 store = gitblobts.Store('/path_to/preexisting_git_repo', compression=optional_compression_module_name,
                         key=optional_user_saved_encryption_key)
 
-filename1_as_time_utc_ns: int = store.addblob(blob='a byte encoded string'.encode())
-filename2_as_time_utc_ns: int = store.addblob(blob=b'some bytes' * 1000, time_utc=time.time())
+filename1_as_time_utc_ns: int = store.addblob('a byte encoded string'.encode())
+filename2_as_time_utc_ns: int = store.addblob(b'some bytes' * 1000, time_utc=time.time())
 filename3_as_time_utc_ns: int = store.addblob(blob=json.dumps([0, 1., 2.2, 3]).encode(), time_utc=time.time())
 filename4_as_time_utc_ns: int = store.addblob(blob=urllib.request.urlopen('https://i.imgur.com/3GmPd7O.png').read())
 
