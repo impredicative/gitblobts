@@ -259,9 +259,10 @@ class Store:
         if start_utc <= end_utc:
             order = 'ascending'
         else:
-            assert end_utc > start_utc
+            assert start_utc > end_utc
             order = 'descending'
             start_utc, end_utc = end_utc, start_utc
+            assert start_utc <= end_utc
 
         time_path_tuples = ((self._decode_time(path), path) for path in self._path.iterdir() if path.is_file())
         time_path_tuples = ((t, p) for t, p in time_path_tuples if start_utc <= t <= end_utc)
