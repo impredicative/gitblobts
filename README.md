@@ -65,7 +65,6 @@ blobs3_descending: List[Blob] = list(store.getblobs(start_utc=time.time(), end_u
 ```
 
 ## To do
-* Publish to pypi.
 * Add tests, also refactoring the code to be more testable.
 * Add documentation.
 
