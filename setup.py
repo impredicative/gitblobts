@@ -27,9 +27,7 @@ setup(
     packages=find_packages(exclude=['tests', 'util']),
     install_requires=parse_requirements('requirements.in'),
     python_requires='>=3.7',
-    package_data={
-        'gitblobts': ['logging.conf'],
-    },
+    package_data={'gitblobts': ['logging.conf']},
     classifiers=[  # https://pypi.org/classifiers/
         "Programming Language :: Python :: 3.7",
         "License :: OSI Approved :: GNU Affero General Public License v3",
