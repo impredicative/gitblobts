@@ -19,7 +19,7 @@ def parse_requirements(filename: str) -> List[str]:
 setup(
     name='gitblobts',
     version='0.0.1',
-    description='Git-backed time-indexed blob storage',
+    description='git-backed time-indexed blob storage',
     keywords='git bytes mirroring storage time',
     long_description=Path(__file__).with_name('README.md').read_text().strip(),
     long_description_content_type='text/markdown',
@@ -29,10 +29,16 @@ setup(
     python_requires='>=3.7',
     classifiers=[  # https://pypi.org/classifiers/
         "Programming Language :: Python :: 3.7",
-        "License :: OSI Approved :: GNU General Public License (GPL)",
+        "License :: OSI Approved :: GNU Affero General Public License v3",
         "Topic :: Communications :: File Sharing",
         "Topic :: Software Development :: Version Control :: Git",
         "Topic :: System :: Archiving",
         "Topic :: System :: Archiving :: Mirroring",
     ],
 )
+
+"""
+Build steps:
+python ./setup.py sdist bdist_wheel
+twine upload --repository-url https://test.pypi.org/legacy/ ./dist/*
+"""
