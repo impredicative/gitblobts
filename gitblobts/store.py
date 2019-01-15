@@ -40,11 +40,14 @@ class Store:
         self._path: pathlib.Path = pathlib.Path(path)
         self._compression = importlib.import_module(compression) if compression else None  # e.g. bz2, gzip, lzma
         self._encryption: cryptography.fernet.Fernet = cryptography.fernet.Fernet(key) if key else None
-        self._repo: git.Repo = git.Repo(self._path)  # Can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
+        self._repo: git.Repo = git.Repo(self._path)
+        # The above line can raise git.exc.NoSuchPathError or git.exc.InvalidGitRepositoryError.
+
         self._int_merger: IntMerger = IntMerger(config.NUM_RANDOM_BITS)
         self._file_stem_encoder: IntBaseEncoder = IntBaseEncoder(config.FILENAME_ENCODING, signed=True)
         self._file_suffix_encoder: IntBaseEncoder = IntBaseEncoder(config.FILENAME_ENCODING, signed=False)
         self._file_suffix_encoded: str = self._file_suffix_encoder.encode(config.FILE_VERSION).decode()
+
         self._log_state()
         self._check_repo()
 
@@ -101,33 +104,46 @@ class Store:
 
     def _commit_and_push_repo(self) -> None:
         repo = self._repo
+        remote = repo.remote()
+        remote_name = remote.name
+        branch_name = repo.active_branch.name
+
         # Note: repo.index.entries was observed to also include unpushed files in addition to uncommitted files.
-        log.debug('Committing repository index.')
+        log.debug('Committing repository index in active branch "%s".', branch_name)
         self._repo.index.commit('')
-        log.info('Committed repository index.')
+        log.info('Committed repository index in active branch "%s".', branch_name)
 
         def _is_pushed(push_info: git.remote.PushInfo) -> bool:
             valid_flags = {push_info.FAST_FORWARD, push_info.NEW_HEAD}  # UP_TO_DATE flag is intentionally skipped.
             return push_info.flags in valid_flags  # This check can require the use of & instead.
 
-        remote = repo.remote()
-        log.debug('Pushing to repository remote "%s".', remote.name)
-        push_info = remote.push()[0]
-        is_pushed = _is_pushed(push_info)
-        logger = log.debug if is_pushed else log.warning
-        logger('Push flags were %s and message was "%s".', push_info.flags, push_info.summary.strip())
-        if not is_pushed:
-            log.warning('Failed first attempt at pushing to repository remote "%s". A pull will be performed.',
-                        remote.name)
-            self._pull_repo()
-            log.info('Reattempting to push to repository remote "%s".', remote.name)
+        push_desc = f'active branch "{branch_name}" to repository remote "{remote_name}"'
+        log.debug('Pushing %s.', push_desc)
+        try:
             push_info = remote.push()[0]
+        except git.exc.GitCommandError:  # Could be due to no upstream branch.
+            log.warning('Failed to push %s. This could be due to no matching upstream branch.', push_desc)
+            log.info('Reattempting to push %s using a lower-level command which also sets upstream branch.', push_desc)
+            push_output = repo.git.push('--set-upstream', remote_name, branch_name)
+            log.info('Push output was: %s', push_output)
+            expected_msg = f"Branch '{branch_name}' set up to track remote branch '{branch_name}' from '{remote_name}'."
+            if push_output != expected_msg:
+                raise exc.RepoPushError(f'Failed to push {push_desc}.')
+        else:
             is_pushed = _is_pushed(push_info)
-            logger = log.debug if is_pushed else log.error
+            logger = log.debug if is_pushed else log.warning
             logger('Push flags were %s and message was "%s".', push_info.flags, push_info.summary.strip())
             if not is_pushed:
-                raise exc.RepoPushError(f'Failed to push to repository remote "{remote.name}" despite a pull.')
-        log.info('Pushed to repository remote "%s".', remote.name)
+                log.warning('Failed first attempt at pushing %s. A pull will be performed.', push_desc)
+                self._pull_repo()
+                log.info('Reattempting to push %s.', push_desc)
+                push_info = remote.push()[0]
+                is_pushed = _is_pushed(push_info)
+                logger = log.debug if is_pushed else log.error
+                logger('Push flags were %s and message was "%s".', push_info.flags, push_info.summary.strip())
+                if not is_pushed:
+                    raise exc.RepoPushError(f'Failed to push {push_desc} despite a pull.')
+        log.info('Pushed %s.', push_desc)
 
     def _compress_blob(self, blob: bytes) -> bytes:
         if self._compression:
@@ -193,25 +209,28 @@ class Store:
                  config.FILE_VERSION, self._file_suffix_encoded)
 
     def _pull_repo(self) -> None:
-        remote = self._repo.remote()
-        name = remote.name
+        repo = self._repo
+        remote = repo.remote()
+        remote_name = remote.name
+        branch_name = repo.active_branch.name
 
         def _is_pulled(pull_info: git.remote.FetchInfo) -> bool:
             valid_flags = {pull_info.HEAD_UPTODATE, pull_info.FAST_FORWARD}
             return pull_info.flags in valid_flags  # This check can require the use of & instead.
 
-        log.debug('Pulling from repository remote "%s".', name)
+        pull_desc = f'into active branch "{branch_name}" from repository remote "{remote_name}"'
+        log.debug('Pulling %s.', pull_desc)
         try:
             pull_info = remote.pull()[0]
-        except git.exc.GitCommandError:  # Could be due to no push ever.
-            log.warning('Failed to pull from repository remote "%s". Perhaps there is no matching remote branch.', name)
+        except git.exc.GitCommandError:  # Could be due to no upstream branch.
+            log.warning('Failed to pull %s. This could be due to no matching upstream branch.', pull_desc)
         else:
             is_pulled = _is_pulled(pull_info)
             logger = log.debug if is_pulled else log.error
             logger('Pull flags were %s.', pull_info.flags)
             if not is_pulled:
-                raise exc.RepoPullError(f'Failed to pull from repository remote "{remote.name}".')
-            log.info('Pulled from repository remote "%s".', name)
+                raise exc.RepoPullError(f'Failed to pull {pull_desc}.')
+            log.info('Pulled %s.', pull_desc)
 
     def _standardize_time_to_ns(self, time_utc: Timestamp) -> int:
         def _convert_seconds_to_ns(seconds: Union[int, float]) -> int:
