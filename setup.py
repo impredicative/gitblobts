@@ -24,7 +24,7 @@ setup(
     long_description=Path(__file__).with_name('README.md').read_text().strip(),
     long_description_content_type='text/markdown',
     url='https://github.com/impredicative/gitblobts/',
-    packages=find_packages(exclude=['util']),
+    packages=find_packages(exclude=['tests', 'util']),
     install_requires=parse_requirements('requirements.in'),
     python_requires='>=3.7',
     classifiers=[  # https://pypi.org/classifiers/
