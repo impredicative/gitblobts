@@ -21,7 +21,7 @@ An effort has been made to keep third-party package requirements to a minimum.
 As the code is in an early stage, the implementation should be reviewed before use.
 
 ## Installation
-Using Python 3.7+, run `pip install gitblobts` (pending). Older version of Python will not work.
+Using Python 3.7+, run `pip install gitblobts`. Older version of Python will not work.
 This is due to a reliance on [`time_ns`](https://docs.python.org/3/library/time.html#time.time_ns) which doesn't exist
 in older versions of Python.
 
