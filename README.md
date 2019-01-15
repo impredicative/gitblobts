@@ -1,6 +1,7 @@
 # gitblobts
 
-[`gitblobts`](https://github.com/impredicative/gitblobts/) is an experimental Python package for git-backed time-indexed blob storage.
+[`gitblobts`](https://github.com/impredicative/gitblobts/) is an experimental Python package for 
+**git-backed time-indexed blob storage**.
 Even so, a lock-in of the stored files with git is avoided.
 If encryption is not enabled, a lock-in of the file contents with this application is also avoided.
 
