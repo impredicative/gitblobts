@@ -18,7 +18,7 @@ def parse_requirements(filename: str) -> List[str]:
 
 setup(
     name='gitblobts',
-    version='0.0.1',
+    version='0.0.2',
     description='git-backed time-indexed blob storage',
     keywords='git bytes mirroring storage time',
     long_description=Path(__file__).with_name('README.md').read_text().strip(),
@@ -27,6 +27,9 @@ setup(
     packages=find_packages(exclude=['tests', 'util']),
     install_requires=parse_requirements('requirements.in'),
     python_requires='>=3.7',
+    package_data={
+        'gitblobts': ['logging.conf'],
+    },
     classifiers=[  # https://pypi.org/classifiers/
         "Programming Language :: Python :: 3.7",
         "License :: OSI Approved :: GNU Affero General Public License v3",
