@@ -1,7 +1,6 @@
 # gitblobts
 
-[`gitblobts`](https://github.com/impredicative/gitblobts/) is an experimental Python package for 
-**git-backed time-indexed blob storage**.
+`gitblobts` is an experimental Python package for **git-backed time-indexed blob storage**.
 Even so, a lock-in of the stored files with git is avoided.
 If encryption is not enabled, a lock-in of the file contents with this application is also avoided.
 
@@ -22,9 +21,14 @@ An effort has been made to keep third-party package requirements to a minimum.
 As the code is in an early stage, the implementation should be reviewed before use.
 
 ## Installation
-Using Python 3.7+, install the package from [PyPI](https://pypi.org/project/gitblobts/): `pip install gitblobts`.
+Using Python 3.7+, install the package from PyPI: `pip install -U gitblobts`.
 Older version of Python will not work due to a reliance on
 [`time_ns`](https://docs.python.org/3/library/time.html#time.time_ns) which doesn't exist in older versions.
+
+## Links
+* Code: https://github.com/impredicative/gitblobts/
+<!-- * Documentation: https://gitblobts.readthedocs.io/ -->
+* Release: https://pypi.org/project/gitblobts/
 
 ## Usage
 
