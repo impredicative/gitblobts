@@ -18,7 +18,7 @@ def parse_requirements(filename: str) -> List[str]:
 
 setup(
     name='gitblobts',
-    version='0.0.1',
+    version='0.0.2',
     description='git-backed time-indexed blob storage',
     keywords='git bytes mirroring storage time',
     long_description=Path(__file__).with_name('README.md').read_text().strip(),
@@ -39,6 +39,7 @@ setup(
 
 """
 Build steps:
+rm -rf ./build/* ./dist/*
 python ./setup.py sdist bdist_wheel
 twine upload --repository-url https://test.pypi.org/legacy/ ./dist/*
 """
