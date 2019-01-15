@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 def parse_requirements(filename: str) -> List[str]:
     """Return requirements from requirements file."""
-    # Ref: https://stackoverflow.com/a/50368460/
+    # Ref: https://stackoverflow.com/a/42033122/
     requirements = (Path(__file__).parent / filename).read_text().strip().split('\n')
     requirements = [r.strip() for r in requirements]
     requirements = [r for r in sorted(requirements) if r and not r.startswith('#')]
