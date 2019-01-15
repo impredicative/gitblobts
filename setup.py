@@ -12,7 +12,7 @@ def parse_requirements(filename: str) -> List[str]:
     # Ref: https://stackoverflow.com/a/50368460/
     requirements = (Path(__file__).parent / filename).read_text().strip().split('\n')
     requirements = [r.strip() for r in requirements]
-    requirements = [r for r in sorted(requirements) if r and not(r.startswith('#'))]
+    requirements = [r for r in sorted(requirements) if r and not r.startswith('#')]
     return requirements
 
 
