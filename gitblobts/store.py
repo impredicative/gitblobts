@@ -20,7 +20,7 @@ from gitblobts.util import IntBaseEncoder, IntMerger
 
 log = logging.getLogger(__name__)
 
-Timestamp = Union[None, float, time.struct_time, str]
+Timestamp = Union[None, int, float, str, time.struct_time]
 
 
 @dataclasses.dataclass
@@ -263,7 +263,7 @@ class Store:
             return time.time_ns()
         elif time_utc == 0:  # OK as int since 0 seconds is 0 nanoseconds.
             return 0
-        elif isinstance(time_utc, float):
+        elif isinstance(time_utc, (int, float)):
             if not math.isfinite(time_utc):
                 raise exc.TimeInvalid(f'Provided time "{time_utc}" must be finite and not NaN for use as a filename.')
             return _convert_seconds_to_ns(time_utc)
@@ -284,7 +284,16 @@ class Store:
                                         f'It must be conform to {annotation}.')
 
     def addblob(self, blob: bytes, time_utc: Optional[Timestamp] = None) -> None:
-        """Add a blob."""
+        """
+        Add a blob.
+
+        :param blob: bytes representation of text or an image or anything else.
+        :param time_utc: optional time at which to index the blob, preferably as a Unix timestamp. If a Unix timestamp,
+            it can be positive or negative number of whole or fractional seconds since epoch. This doesn't have to be
+            unique for a blob, and so there can be a one-to-many mapping of timestamp-to-blob. If a string, it is
+            parsed using `dateparser.parse <https://dateparser.readthedocs.io/en/stable/#dateparser.parse>`_. If not
+            specified, the current time is used.
+        """
         self._addblob(blob, time_utc, push=True)
 
     def addblobs(self, blobs: Iterable[bytes], times_utc: Optional[Iterable[Timestamp]] = None) -> None:
