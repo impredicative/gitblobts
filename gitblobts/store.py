@@ -41,7 +41,7 @@ def generate_key() -> bytes:
 
     An example of a generated key is ``b'NrYgSuzXVRWtarWcczyuwFs6vZftN1rnlzZtGDaV7iE='``.
 
-    :returns: Key used for encryption and decryption.
+    :returns: key used for encryption and decryption.
     """
     return cryptography.fernet.Fernet.generate_key()
 
