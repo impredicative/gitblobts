@@ -284,8 +284,7 @@ class Store:
                                         f'It must be conform to {annotation}.')
 
     def addblob(self, blob: bytes, time_utc: Optional[Timestamp] = None) -> None:
-        """
-        Add a blob.
+        """Add a blob and also push it to the remote repository.
 
         :param blob: bytes representation of text or an image or anything else.
         :param time_utc: optional time at which to index the blob, preferably as a Unix timestamp. If a Unix timestamp,
@@ -297,7 +296,18 @@ class Store:
         self._addblob(blob, time_utc, push=True)
 
     def addblobs(self, blobs: Iterable[bytes], times_utc: Optional[Iterable[Timestamp]] = None) -> None:
-        """Add multiple blobs."""
+        """Add multiple blobs and also push them to the remote repository.
+
+        For adding multiple blobs, this method is more efficient than multiple calls to :meth:`addblob`, as the commit
+        and push are batched and done just once.
+
+        :param blobs: iterable or sequence.
+        :param times_utc: optional iterable or sequence of the same length as ``blobs``. If not specified, the current
+            time is used, and this will naturally increment just slightly for each subsequent blob.
+
+        In case the length of ``blobs`` and ``times_utc`` are somehow not identical, the shorter of the two lengths is
+        used.
+        """
         log.info('Adding blobs.')
         if times_utc is None:
             times_utc = itertools.repeat(None)
