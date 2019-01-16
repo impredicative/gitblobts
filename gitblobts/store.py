@@ -34,7 +34,13 @@ class Blob:
 
 
 def generate_key() -> bytes:
-    """Return a random new Fernet key."""
+    """Return a random new `Fernet <https://cryptography.io/en/stable/fernet/>`_ key.
+
+    The key should be stored safely. If it is lost, it will not be possible to decrypt encrypted blobs.
+    If anyone else gains access to it, it can be used to decrypt blobs.
+
+    An example of a generated key is ``b'NrYgSuzXVRWtarWcczyuwFs6vZftN1rnlzZtGDaV7iE='``.
+    """
     return cryptography.fernet.Fernet.generate_key()
 
 
