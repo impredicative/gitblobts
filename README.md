@@ -18,7 +18,6 @@ From the perspective of the package, once a blob is written, it is considered re
 An attempt to add a blob with the same timestamp as a preexisting blob will result in a new blob.
 
 An effort has been made to keep third-party package requirements to a minimum.
-As the code is in an early stage, the implementation should be reviewed before use.
 
 ## Links
 * Code: [https://github.com/impredicative/gitblobts/](https://github.com/impredicative/gitblobts/)
