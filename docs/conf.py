@@ -40,7 +40,7 @@ release = ''
 extensions = [
     'recommonmark',
     'sphinx.ext.autodoc',
-    'sphinx.ext.inheritance_diagram',
+    'sphinx.ext.inheritance_diagram',   # Requires running `sudo apt install graphviz`.
     'sphinx.ext.intersphinx'
     # 'sphinx.ext.napoleon',
 ]
@@ -178,4 +178,5 @@ epub_exclude_files = ['search.html']
 
 
 # -- Extension configuration -------------------------------------------------
+autodoc_default_options = {'show-inheritance': None}
 intersphinx_mapping = {'python': ('https://docs.python.org/3/', None)}
