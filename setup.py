@@ -22,7 +22,7 @@ setup(
     long_description_content_type='text/markdown',
     url='https://github.com/impredicative/gitblobts/',
     packages=find_packages(exclude=['scripts', 'tests', 'util']),
-    install_requires=parse_requirements('requirements.in'),
+    install_requires=parse_requirements('requirements/install.in'),
     python_requires='>=3.7',
     package_data={'gitblobts': ['logging.conf']},
     classifiers=[  # https://pypi.org/classifiers/
