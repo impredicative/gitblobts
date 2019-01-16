@@ -303,7 +303,8 @@ class Store:
 
         :param blobs: iterable or sequence.
         :param times_utc: optional iterable or sequence of the same length as ``blobs``. If not specified, the current
-            time is used, and this will naturally increment just slightly for each subsequent blob.
+            time is used, and this will naturally increment just slightly for each subsequent blob. For further details,
+            refer to the `time_utc` parameter of :meth:`addblob`.
 
         In case the length of ``blobs`` and ``times_utc`` are somehow not identical, the shorter of the two lengths is
         used.
@@ -323,7 +324,7 @@ class Store:
 
     def getblobs(self, start_utc: Optional[Timestamp] = -math.inf, end_utc: Optional[Timestamp] = math.inf,
                  *, pull: Optional[bool] = False) -> Iterator[Blob]:
-        """Yield ``Blob`` objects matching the specified time range."""
+        """Yield :class:`Blob` objects matching the specified time range."""
         pull_state = 'with' if pull else 'without'
         log.info('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
 
