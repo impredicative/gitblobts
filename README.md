@@ -6,13 +6,13 @@ If encryption is not enabled, a lock-in of the file contents with this applicati
 
 Its goal is to ensure availability of data both locally and remotely.
 It stores each blob as a file in a preexisting local and remote git repository.
-Each filename contains an encoded nanosecond UTC timestamp and format version number.
+Each filename contains an encoded nanosecond timestamp and format version number.
 
 Given the pull and push actions of git, collaborative use of the same remote repo is supported.
 To prevent merge conflicts, there is a one-to-many mapping of timestamp-to-filename.
 This is accomplished by including sufficient random bytes in the filename to ensure uniqueness.
 
-Subsequent retrieval of blobs is by a UTC time range.
+Subsequent retrieval of blobs is by a time range.
 At this time there is no implemented method to remove or overwrite a blob; this is by design.
 From the perspective of the package, once a blob is written, it is considered read-only.
 An attempt to add a blob with the same timestamp as a preexisting blob will result in a new blob.
@@ -73,7 +73,6 @@ blobs3_descending: List[Blob] = list(store.getblobs(start_utc=time.time(), end_u
 <!--
 ## Wish list
 * Add tests, also refactoring the code to be more testable.
-* Add documentation.
 * Considering organizing blobs into directory structure: YYYY/MM/DD/HH
 * Support asyncio or avoiding waiting for commit+push.
 * Support label/key/name/hash as filenames as an alternative to timestamp.
