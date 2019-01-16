@@ -1,5 +1,3 @@
-"""Store."""
-
 import calendar
 import dataclasses
 import importlib
