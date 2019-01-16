@@ -38,8 +38,9 @@ release = ''
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.inheritance_diagram',
     'sphinx.ext.autodoc',
+    'sphinx.ext.inheritance_diagram',
+    'sphinx.ext.intersphinx'
     # 'sphinx.ext.napoleon',
 ]
 
@@ -76,7 +77,7 @@ pygments_style = None
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = ('default', 'alabaster')[0]
+html_theme = ('default', 'alabaster', 'nature')[2]
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -176,3 +177,4 @@ epub_exclude_files = ['search.html']
 
 
 # -- Extension configuration -------------------------------------------------
+intersphinx_mapping = {'python': ('https://docs.python.org/3/', None)}
