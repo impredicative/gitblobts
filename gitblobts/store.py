@@ -25,15 +25,21 @@ Timestamp = Union[None, float, time.struct_time, str]
 
 @dataclasses.dataclass
 class Blob:
+    """Instances of this class are returned by ``Store.getblobs``
+
+    This class is not meant to be initialized otherwise.
+    """
     time_utc_ns: int
     blob: bytes
 
 
 def generate_key() -> bytes:
+    """Return a random new Fernet key."""
     return cryptography.fernet.Fernet.generate_key()
 
 
 class Store:
+    """Initialize the interface to a preexisting cloned git repository."""
 
     def __init__(self, path: Union[str, pathlib.Path], *, compression: Optional[str] = None,
                  key: Optional[bytes] = None):
@@ -261,9 +267,11 @@ class Store:
                                         f'It must be conform to {annotation}.')
 
     def addblob(self, blob: bytes, time_utc: Optional[Timestamp] = None) -> int:
+        """Add a blob and return its corresponding nanosecond timestamp."""
         return self._addblob(blob, time_utc, push=True)
 
     def addblobs(self, blobs: Iterable[bytes], times_utc: Optional[Iterable[Timestamp]] = None) -> List[int]:
+        """Add multiple blobs and return a list of their corresponding nanosecond timestamps."""
         log.info('Adding blobs.')
         if times_utc is None:
             times_utc = itertools.repeat(None)
@@ -275,6 +283,7 @@ class Store:
 
     def getblobs(self, start_utc: Optional[Timestamp] = -math.inf, end_utc: Optional[Timestamp] = math.inf,
                  *, pull: Optional[bool] = False) -> Iterator[Blob]:
+        """Yield blobs within the specified time range."""
         pull_state = 'with' if pull else 'without'
         log.info('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
 

@@ -1,8 +1,8 @@
-gitblobts.exc
-=============
+exc
+===
 
 .. inheritance-diagram:: gitblobts.exc
 
 .. automodule:: gitblobts.exc
-   :synopsis: Exception hierarchy.
+   :synopsis: Exception hierarchy
    :members:

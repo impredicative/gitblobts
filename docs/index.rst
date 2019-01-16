@@ -9,8 +9,8 @@ gitblobts user documentation
    modules/*
 
 
-Indices and tables
-==================
+Index
+=====
 
 * :ref:`genindex`
 * :ref:`modindex`
