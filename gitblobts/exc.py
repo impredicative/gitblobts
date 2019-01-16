@@ -1,9 +1,12 @@
+"""Exceptions."""
+
 import logging
 
 log = logging.getLogger(__name__)
 
 
 class StoreError(Exception):
+    """Log the provided message as an error if logging is appropriately enabled, and raise the exception."""
     def __init__(self, msg: str):
         log.error(msg)
         super().__init__(msg)
