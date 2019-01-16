@@ -1,6 +1,7 @@
 mypy
 pip
 pip-tools
+recommonmark
 setuptools
 sphinx
 twine
