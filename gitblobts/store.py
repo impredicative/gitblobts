@@ -1,3 +1,5 @@
+"""Store."""
+
 import calendar
 import dataclasses
 import importlib
@@ -25,7 +27,7 @@ Timestamp = Union[None, float, time.struct_time, str]
 
 @dataclasses.dataclass
 class Blob:
-    """Instances of this class are returned by ``Store.getblobs``
+    """Instances of this class are returned by ``Store.getblobs``.
 
     This class is not meant to be initialized otherwise.
     """
@@ -283,7 +285,7 @@ class Store:
 
     def getblobs(self, start_utc: Optional[Timestamp] = -math.inf, end_utc: Optional[Timestamp] = math.inf,
                  *, pull: Optional[bool] = False) -> Iterator[Blob]:
-        """Yield blobs within the specified time range."""
+        """Yield ``Blob`` objects matching the specified time range."""
         pull_state = 'with' if pull else 'without'
         log.info('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
 
