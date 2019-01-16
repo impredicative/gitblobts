@@ -20,17 +20,17 @@ An attempt to add a blob with the same timestamp as a preexisting blob will resu
 An effort has been made to keep third-party package requirements to a minimum.
 As the code is in an early stage, the implementation should be reviewed before use.
 
-## Installation
-Using Python 3.7+, install the package from PyPI: `pip install -U gitblobts`.
-Older version of Python will not work due to a reliance on
-[`time_ns`](https://docs.python.org/3/library/time.html#time.time_ns) which doesn't exist in older versions.
-
 ## Links
 * Code: [https://github.com/impredicative/gitblobts/](https://github.com/impredicative/gitblobts/)
 * Docs: [https://gitblobts.readthedocs.io/](https://gitblobts.readthedocs.io/)
 * Release: [https://pypi.org/project/gitblobts/](https://pypi.org/project/gitblobts/)
 
-## Usage
+## Installation
+Using Python 3.7+, install the package from PyPI: `pip install -U gitblobts`.
+Older version of Python will not work due to a reliance on
+[`time_ns`](https://docs.python.org/3/library/time.html#time.time_ns) which doesn't exist in older versions.
+
+## Usage examples
 
 ### Storage
 ```python
