@@ -15,7 +15,7 @@ def parse_requirements(filename: str) -> List[str]:
 
 setup(
     name='gitblobts',
-    version='0.0.3',
+    version='0.0.4',
     description='git-backed time-indexed blob storage',
     keywords='git bytes mirroring storage time',
     long_description=Path(__file__).with_name('README.md').read_text().strip(),
