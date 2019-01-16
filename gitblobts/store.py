@@ -25,7 +25,7 @@ Timestamp = Union[None, float, time.struct_time, str]
 
 @dataclasses.dataclass
 class Blob:
-    """Instances of this class are returned by ``Store.getblobs``.
+    """Instances of this class are returned by :meth:`Store.getblobs`.
 
     This class is not meant to be initialized otherwise.
     """
@@ -75,7 +75,7 @@ class Store:
         self._log_state()
         self._check_repo()
 
-    def _addblob(self, blob: bytes, time_utc: Union[None, Timestamp], *, push: bool) -> int:
+    def _addblob(self, blob: bytes, time_utc: Union[None, Timestamp], *, push: bool) -> None:
         push_state = 'with' if push else 'without'
         log.info('Adding blob of length %s and time "%s" %s repository push.', len(blob), time_utc, push_state)
         if not isinstance(blob, bytes):
@@ -102,7 +102,6 @@ class Store:
         assert blob_original == self._egress_blob(path.read_bytes())
         log.info('Added blob of raw length %s and processed length %s of timestamp %s with name %s.',
                  len(blob_original), len(blob), time_utc_ns, path.name)
-        return time_utc_ns
 
     def _check_repo(self) -> None:
         repo = self._repo
@@ -284,20 +283,24 @@ class Store:
             raise exc.TimeUnhandledType(f'Provided time "{time_utc}" is of an unhandled type "{type(time_utc)}". '
                                         f'It must be conform to {annotation}.')
 
-    def addblob(self, blob: bytes, time_utc: Optional[Timestamp] = None) -> int:
-        """Add a blob and return its corresponding nanosecond timestamp."""
-        return self._addblob(blob, time_utc, push=True)
+    def addblob(self, blob: bytes, time_utc: Optional[Timestamp] = None) -> None:
+        """Add a blob."""
+        self._addblob(blob, time_utc, push=True)
 
-    def addblobs(self, blobs: Iterable[bytes], times_utc: Optional[Iterable[Timestamp]] = None) -> List[int]:
-        """Add multiple blobs and return a list of their corresponding nanosecond timestamps."""
+    def addblobs(self, blobs: Iterable[bytes], times_utc: Optional[Iterable[Timestamp]] = None) -> None:
+        """Add multiple blobs."""
         log.info('Adding blobs.')
         if times_utc is None:
             times_utc = itertools.repeat(None)
-        times_utc_ns = [self._addblob(blob, time_utc, push=False) for blob, time_utc in zip(blobs, times_utc)]
-        if times_utc_ns:
+
+        num_added = 0
+        for blob, time_utc in zip(blobs, times_utc):
+            self._addblob(blob, time_utc, push=False)
+            num_added += 1
+
+        if num_added:
             self._commit_and_push_repo()
-        log.info('Added %s blobs.', len(times_utc_ns))
-        return times_utc_ns
+        log.info('Added %s blobs.', num_added)
 
     def getblobs(self, start_utc: Optional[Timestamp] = -math.inf, end_utc: Optional[Timestamp] = math.inf,
                  *, pull: Optional[bool] = False) -> Iterator[Blob]:
