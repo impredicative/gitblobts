@@ -11,12 +11,9 @@ class StoreError(Exception):
     This is the base exception class in this module. All other exception classes in this module hierarchically derive
     from it.
 
-    Parameters
-    ----------
-    msg
-        Exception error message.
+    :param msg: Exception error message.
     """
-    #     :param msg: Exception error message.
+    #
     def __init__(self, msg: str):
         log.error(msg)
         super().__init__(msg)
