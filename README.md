@@ -70,12 +70,10 @@ blobs3_ascending: List[Blob] = list(store.getblobs(start_utc=time.time() - 86400
 blobs3_descending: List[Blob] = list(store.getblobs(start_utc=time.time(), end_utc=time.time() - 86400))
 ```
 
-## To do
-* Add tests, also refactoring the code to be more testable.
-* Add documentation.
-
 <!--
 ## Wish list
+* Add tests, also refactoring the code to be more testable.
+* Add documentation.
 * Considering organizing blobs into directory structure: YYYY/MM/DD/HH
 * Support asyncio or avoiding waiting for commit+push.
 * Support label/key/name/hash as filenames as an alternative to timestamp.
