@@ -8,7 +8,7 @@ import pathlib
 import secrets
 import time
 import typing
-from typing import Iterable, Iterator, List, Optional, Union
+from typing import Iterable, Iterator, Optional, Union
 
 import cryptography.fernet
 import dateparser
