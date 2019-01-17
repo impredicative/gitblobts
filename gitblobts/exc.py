@@ -6,10 +6,9 @@ log = logging.getLogger(__name__)
 
 
 class StoreError(Exception):
-    """Raise the exception.
+    """This is the base exception class in this module.
 
-    This is the base exception class in this module. All other exception classes in this module hierarchically derive
-    from it.
+    This exception is not raised directly. All other exception classes in this module hierarchically derive from it.
 
     :param msg: exception error message.
     """
