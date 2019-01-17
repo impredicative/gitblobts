@@ -292,6 +292,8 @@ class Store:
             unique for a blob, and so there can be a one-to-many mapping of timestamp-to-blob. If a string, it is
             parsed using `dateparser.parse <https://dateparser.readthedocs.io/en/stable/#dateparser.parse>`_. If not
             specified, the current time is used.
+
+        Idempotency, if required, is to be implemented externally.
         """
         self._addblob(blob, time_utc, push=True)
 
@@ -307,6 +309,8 @@ class Store:
             refer to the `time_utc` parameter of :meth:`addblob`.
 
         In case the length of `blobs` and `times_utc` are somehow not identical, the shorter of the two lengths is used.
+
+        Idempotency, if required, is to be implemented externally.
         """
         log.info('Adding blobs.')
         if times_utc is None:
