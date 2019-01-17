@@ -48,7 +48,7 @@ store.addblob(blob=json.dumps([0, 1., 2.2, 3]).encode(),
 store.addblob(blob=urllib.request.urlopen('https://i.imgur.com/3GmPd7O.png').read())
 
 store.addblobs(blobs=[b'first blob', b'another blob'])
-store.addblobs(blobs=[b'A', b'B'], times_utc=[time.time(), time.time()])
+store.addblobs(blobs=[b'A', b'B'], timestamps=[time.time(), time.time()])
 ```
 
 ### Retrieval
