@@ -41,14 +41,14 @@ optional_user_saved_encryption_key: Optional[bytes] = [None, gitblobts.generate_
 store = gitblobts.Store('/path_to/preexisting_git_repo',
                         compression=optional_compression_module_name, key=optional_user_saved_encryption_key)
 
-filename1_as_time_utc_ns: int = store.addblob('a byte encoded string'.encode())
-filename2_as_time_utc_ns: int = store.addblob(b'some bytes' * 1000, time_utc=time.time())
-filename3_as_time_utc_ns: int = store.addblob(blob=json.dumps([0, 1., 2.2, 3]).encode(),
-                                              time_utc=datetime.datetime.now(datetime.timezone.utc).timestamp())
-filename4_as_time_utc_ns: int = store.addblob(blob=urllib.request.urlopen('https://i.imgur.com/3GmPd7O.png').read())
+store.addblob('a byte encoded string'.encode())
+store.addblob(b'some bytes' * 1000, timestamp=time.time())
+store.addblob(blob=json.dumps([0, 1., 2.2, 3]).encode(),
+              timestamp=datetime.datetime.now(datetime.timezone.utc).timestamp())
+store.addblob(blob=urllib.request.urlopen('https://i.imgur.com/3GmPd7O.png').read())
 
-filenames1_as_time_utc_ns: List[int] = store.addblobs(blobs=[b'first blob', b'another blob'])
-filenames2_as_time_utc_ns: List[int] = store.addblobs(blobs=[b'A', b'B'], times_utc=[time.time(), time.time()])
+store.addblobs(blobs=[b'first blob', b'another blob'])
+store.addblobs(blobs=[b'A', b'B'], times_utc=[time.time(), time.time()])
 ```
 
 ### Retrieval
@@ -61,12 +61,12 @@ store = Store('/path_to/preexisting_git_repo', compression='gzip', key=b'JVGmuw3
 
 blobs: List[Blob] = list(store.getblobs(pull=False))
 blobs_bytes: List[bytes] = [b.blob for b in blobs]
-times_utc_ns: List[int] = [b.time_utc_ns for b in blobs]
+timestamp_ns: List[int] = [b.timestamp_ns for b in blobs]
 
-blobs2_ascending: List[Blob] = list(store.getblobs(start_utc='midnight yesterday', end_utc='now'))
-blobs2_descending: List[Blob] = list(store.getblobs(start_utc='now', end_utc='midnight yesterday', pull=True))
-blobs3_ascending: List[Blob] = list(store.getblobs(start_utc=time.time() - 86400, end_utc=time.time(), pull=True))
-blobs3_descending: List[Blob] = list(store.getblobs(start_utc=time.time(), end_utc=time.time() - 86400))
+blobs2_ascending: List[Blob] = list(store.getblobs(start_time='midnight yesterday', end_time='now'))
+blobs2_descending: List[Blob] = list(store.getblobs(start_time='now', end_time='midnight yesterday', pull=True))
+blobs3_ascending: List[Blob] = list(store.getblobs(start_time=time.time() - 86400, end_time=time.time(), pull=True))
+blobs3_descending: List[Blob] = list(store.getblobs(start_time=time.time(), end_time=time.time() - 86400))
 ```
 
 <!--
