@@ -335,6 +335,8 @@ class Store:
         :param pull: pull first from remote repository. A pull should be avoided unless necessary.
         :yields: instances of :class:`Blob`. If `start_utc` ≤ `end_utc`, blobs are yielded in ascending chronological
             order sorted by their registered timestamp, otherwise in descending order.
+
+        To pull without yielding any blobs, one can therefore call ``get_blobs(math.inf, math.inf, pull=True)``.
         """
         pull_state = 'with' if pull else 'without'
         log.info('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
