@@ -33,7 +33,7 @@ Older version of Python will not work due to a reliance on
 
 ### Storage
 ```python
-from typing import List, Optional
+from typing import Optional
 import datetime, gitblobts, json, time, urllib.request
 
 optional_compression_module_name: Optional[str] = [None, 'bz2', 'gzip', 'lzma'][2]
@@ -61,7 +61,7 @@ store = Store('/path_to/preexisting_git_repo', compression='gzip', key=b'JVGmuw3
 
 blobs: List[Blob] = list(store.getblobs(pull=False))
 blobs_bytes: List[bytes] = [b.blob for b in blobs]
-timestamp_ns: List[int] = [b.timestamp_ns for b in blobs]
+timestamps: List[float] = [b.timestamp for b in blobs]
 
 blobs2_ascending: List[Blob] = list(store.getblobs(start_time='midnight yesterday', end_time='now'))
 blobs2_descending: List[Blob] = list(store.getblobs(start_time='now', end_time='midnight yesterday', pull=True))
