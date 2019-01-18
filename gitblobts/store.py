@@ -101,7 +101,7 @@ class Store:
         if push:
             self._commit_and_push_repo()
         assert blob_original == self._egress_blob(path.read_bytes())
-        log.info('Added blob of raw length %s and processed length %s of timestamp (ns) %s with name %s.',
+        log.info('Added blob of raw length %s and processed length %s having timestamp (ns) %s with name %s.',
                  len(blob_original), len(blob), timestamp_ns, path.name)
 
     def _check_repo(self) -> None:
