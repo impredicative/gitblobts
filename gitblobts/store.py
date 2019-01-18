@@ -28,6 +28,9 @@ class Blob:
     """Instances of this class are returned by :meth:`Store.getblobs`.
 
     This class is not meant to be initialized otherwise.
+
+    :param timestamp: registered timestamp
+    :param blob: content
     """
     timestamp: float
     blob: bytes
