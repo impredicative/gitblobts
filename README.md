@@ -26,8 +26,6 @@ An effort has been made to keep third-party package requirements to a minimum.
 
 ## Installation
 Using Python 3.7+, install the package from PyPI: `pip install -U gitblobts`.
-Older version of Python will not work due to a reliance on
-[`time_ns`](https://docs.python.org/3/library/time.html#time.time_ns) which doesn't exist in older versions.
 
 ## Usage examples
 
