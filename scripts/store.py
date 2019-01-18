@@ -1,3 +1,4 @@
+import math
 import time
 
 from gitblobts.config import configure_logging
@@ -7,10 +8,11 @@ configure_logging()
 
 if __name__ == '__main__':
     try:
-        store = Store('/home/devuser/Documents/blobstoretest', compression=None or 'bz2',
+        store = Store('/home/devuser/Documents/blobstoretest', compression=None or 'lzma',
                       key=None or b'JVGmuw3wRntCc7dcQHJ5q1noUs62ydR0Nw8HpyllKn8=')
-        # store.addblobs([b'a2010a', b'c2121c', b'b2020b', b'd4567d'][0:], ['2010', '2121', '2020', '4567'][0:])
-        # print(list(store.getblobs('1900', '8000', pull=0)))
+        # store.addblob(b'asddf', '2345-12-21')
+        # store.addblobs([b'a2010a', b'c2121c', b'b2020b'][0:], ['2010-10-12', '2121-12-21', '2020-03-03'][0:])
+        print(list(store.getblobs('2100', -math.inf, pull=0)))
     except Exception:
         time.sleep(.01)  # Wait for logs to flush.
         raise
