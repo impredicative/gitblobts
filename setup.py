@@ -17,7 +17,7 @@ setup(
     name='gitblobts',
     author='Ouroboros Chrysopoeia',
     author_email='impredicative@users.nomail.github.com',
-    version='0.0.5',
+    version='0.0.6',
     description='git-backed time-indexed blob storage',
     keywords='git bytes mirroring storage time',
     long_description=Path(__file__).with_name('README.md').read_text().strip(),
