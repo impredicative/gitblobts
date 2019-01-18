@@ -77,7 +77,7 @@ class Store:
 
     def _addblob(self, blob: bytes, timestamp: Union[None, Timestamp], *, push: bool) -> None:
         push_state = 'with' if push else 'without'
-        log.info('Adding blob of length %s and timestamp (s) "%s" %s repository push.', len(blob), timestamp,
+        log.info('Adding blob of length %s and timestamp "%s" %s repository push.', len(blob), timestamp,
                  push_state)
         if not isinstance(blob, bytes):
             raise exc.BlobTypeInvalid('Blob must be an instance of type bytes, but it is of '
