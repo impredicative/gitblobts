@@ -9,7 +9,7 @@ It stores each blob as a file in a preexisting local and remote git repository.
 Each filename contains an encoded nanosecond timestamp and format version number.
 
 Given the pull and push actions of git, collaborative use of the same remote repo is supported.
-To prevent merge conflicts, there is a one-to-many mapping of timestamp-to-filename.
+To prevent merge conflicts, there is a one-to-many mapping of timestamp to filenames.
 This is accomplished by including sufficient random bytes in the filename to ensure uniqueness.
 
 Subsequent retrieval of blobs is by a time range.
