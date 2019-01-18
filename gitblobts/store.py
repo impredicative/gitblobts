@@ -291,7 +291,7 @@ class Store:
         :param blob: bytes representation of text or an image or anything else.
         :param timestamp: optional time at which to index the blob, preferably as a Unix timestamp. If a Unix timestamp,
             it can be positive or negative number of whole or fractional seconds since epoch. This doesn't have to be
-            unique for a blob, and so there can be a one-to-many mapping of timestamp-to-blob. If a string, it is
+            unique, and so there can be a one-to-many mapping of timestamp to blobs. If a string, it is
             parsed using `dateparser.parse <https://dateparser.readthedocs.io/en/stable/#dateparser.parse>`_. If not
             specified, the current time is used.
 
