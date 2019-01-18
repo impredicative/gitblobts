@@ -29,7 +29,7 @@ class Blob:
 
     This class is not meant to be initialized otherwise.
     """
-    time_utc_ns: int
+    timestamp: float
     blob: bytes
 
 
@@ -75,33 +75,34 @@ class Store:
         self._log_state()
         self._check_repo()
 
-    def _addblob(self, blob: bytes, time_utc: Union[None, Timestamp], *, push: bool) -> None:
+    def _addblob(self, blob: bytes, timestamp: Union[None, Timestamp], *, push: bool) -> None:
         push_state = 'with' if push else 'without'
-        log.info('Adding blob of length %s and time "%s" %s repository push.', len(blob), time_utc, push_state)
+        log.info('Adding blob of length %s and timestamp (s) "%s" %s repository push.', len(blob), timestamp,
+                 push_state)
         if not isinstance(blob, bytes):
             raise exc.BlobTypeInvalid('Blob must be an instance of type bytes, but it is of '
                                       f'type {type(blob).__qualname__}.')
 
         repo = self._repo
-        time_utc_ns = self._standardize_time_to_ns(time_utc)
-        path = self._path / self._encode_name(time_utc_ns)  # Non-deterministic new file path.
-        decoded_time_utc_ns = self._decode_name(path)
-        assert_error = f'Time {time_utc_ns} was encoded to name {path.name} which was then decoded to a ' \
-            f'different time {decoded_time_utc_ns}.'
-        assert time_utc_ns == decoded_time_utc_ns, assert_error
+        timestamp_ns = self._standardize_time_to_ns(timestamp)
+        path = self._path / self._encode_name(timestamp_ns)  # Non-deterministic new file path.
+        decoded_timestamp_ns = self._decode_name(path)
+        assert_error = f'Timestamp (ns) {timestamp_ns} was encoded to name {path.name} which was then decoded to a ' \
+            f'different timestamp (ns) {decoded_timestamp_ns}.'
+        assert timestamp_ns == decoded_timestamp_ns, assert_error
         blob_original = blob
         blob = self._ingress_blob(blob)
-        log.debug('Writing %s bytes of timestamp %s to file %s.', len(blob), time_utc_ns, path.name)
+        log.debug('Writing %s bytes having timestamp (ns) %s to file %s.', len(blob), timestamp_ns, path.name)
         path.write_bytes(blob)
-        log.info('Wrote %s bytes of timestamp %s to file %s.', len(blob), time_utc_ns, path.name)
+        log.info('Wrote %s bytes having timestamp (ns) %s to file %s.', len(blob), timestamp_ns, path.name)
 
         repo.index.add([str(path)])
-        log.info('Added file %s of timestamp %s to repository index.', path.name, time_utc_ns)
+        log.info('Added file %s having timestamp (ns) %s to repository index.', path.name, timestamp_ns)
         if push:
             self._commit_and_push_repo()
         assert blob_original == self._egress_blob(path.read_bytes())
-        log.info('Added blob of raw length %s and processed length %s of timestamp %s with name %s.',
-                 len(blob_original), len(blob), time_utc_ns, path.name)
+        log.info('Added blob of raw length %s and processed length %s of timestamp (ns) %s with name %s.',
+                 len(blob_original), len(blob), timestamp_ns, path.name)
 
     def _check_repo(self) -> None:
         repo = self._repo
@@ -184,8 +185,8 @@ class Store:
             raise exc.BlobVersionUnsupported(msg)
         _stem: bytes = filepath.stem.encode()
         stem: int = self._file_stem_encoder.decode(_stem)
-        time_utc_ns: int = self._int_merger.split(stem)[0]
-        return time_utc_ns
+        timestamp_ns: int = self._int_merger.split(stem)[0]
+        return timestamp_ns
 
     def _decompress_blob(self, blob: bytes) -> bytes:
         if self._compression:
@@ -204,9 +205,9 @@ class Store:
     def _egress_blob(self, blob: bytes) -> bytes:
         return self._decompress_blob(self._decrypt_blob(blob))
 
-    def _encode_name(self, time_utc_ns: int) -> str:
+    def _encode_name(self, timestamp_ns: int) -> str:
         random: int = secrets.randbits(config.NUM_RANDOM_BITS)
-        _stem: int = self._int_merger.merge(time_utc_ns, random)
+        _stem: int = self._int_merger.merge(timestamp_ns, random)
         stem: str = self._file_stem_encoder.encode(_stem).decode()
         filename: str = f'{stem}.{self._file_suffix_encoded}'
         return filename
@@ -255,39 +256,40 @@ class Store:
                 raise exc.RepoPullError(f'Failed to pull {pull_desc}.')
             log.info('Pulled %s.', pull_desc)
 
-    def _standardize_time_to_ns(self, time_utc: Timestamp) -> int:
+    def _standardize_time_to_ns(self, timestamp: Timestamp) -> int:
         def _convert_seconds_to_ns(seconds: Union[int, float]) -> int:
             return int(round(seconds * int(1e9)))
 
-        if time_utc is None:
+        if timestamp is None:
             return time.time_ns()
-        elif time_utc == 0:  # OK as int since 0 seconds is 0 nanoseconds.
+        elif timestamp == 0:  # OK as int since 0 seconds is 0 nanoseconds.
             return 0
-        elif isinstance(time_utc, (int, float)):
-            if not math.isfinite(time_utc):
-                raise exc.TimeInvalid(f'Provided time "{time_utc}" must be finite and not NaN for use as a filename.')
-            return _convert_seconds_to_ns(time_utc)
-        elif isinstance(time_utc, time.struct_time):
-            time_utc = calendar.timegm(time_utc) if time_utc.tm_zone == 'GMT' else time.mktime(time_utc)
+        elif isinstance(timestamp, (int, float)):
+            if not math.isfinite(timestamp):
+                raise exc.TimeInvalid(f'Provided timestamp "{timestamp}" must be finite and not NaN for use as a '
+                                      'filename.')
+            return _convert_seconds_to_ns(timestamp)
+        elif isinstance(timestamp, time.struct_time):
+            timestamp = calendar.timegm(timestamp) if timestamp.tm_zone == 'GMT' else time.mktime(timestamp)
             # Note: Above conversion is per From-To-Use conversion table at https://docs.python.org/library/time.html
-            return _convert_seconds_to_ns(time_utc)
-        elif isinstance(time_utc, str):
-            time_utc_dt = dateparser.parse(time_utc, settings={'TO_TIMEZONE': 'UTC', 'RETURN_AS_TIMEZONE_AWARE': True,
+            return _convert_seconds_to_ns(timestamp)
+        elif isinstance(timestamp, str):
+            timestamp_dt = dateparser.parse(timestamp, settings={'TO_TIMEZONE': 'UTC', 'RETURN_AS_TIMEZONE_AWARE': True,
                                                             'PREFER_DATES_FROM': 'past'})
-            if time_utc_dt is None:
-                raise exc.TimeInvalid(f'Provided time "{time_utc}" could not be parsed. It provided as a string, '
+            if timestamp_dt is None:
+                raise exc.TimeInvalid(f'Provided time "{timestamp}" could not be parsed. It provided as a string, '
                                       'it must be parsable by dateparser.')
-            return _convert_seconds_to_ns(time_utc_dt.timestamp())
+            return _convert_seconds_to_ns(timestamp_dt.timestamp())
         else:
-            annotation = typing.get_type_hints(self._standardize_time_to_ns)['time_utc']
-            raise exc.TimeUnhandledType(f'Provided time "{time_utc}" is of an unhandled type "{type(time_utc)}". '
+            annotation = typing.get_type_hints(self._standardize_time_to_ns)['timestamp']
+            raise exc.TimeUnhandledType(f'Provided time "{timestamp}" is of an unhandled type "{type(timestamp)}". '
                                         f'It must be conform to {annotation}.')
 
-    def addblob(self, blob: bytes, time_utc: Optional[Timestamp] = None) -> None:
+    def addblob(self, blob: bytes, timestamp: Optional[Timestamp] = None) -> None:
         """Add a blob and also push it to the remote repository.
 
         :param blob: bytes representation of text or an image or anything else.
-        :param time_utc: optional time at which to index the blob, preferably as a Unix timestamp. If a Unix timestamp,
+        :param timestamp: optional time at which to index the blob, preferably as a Unix timestamp. If a Unix timestamp,
             it can be positive or negative number of whole or fractional seconds since epoch. This doesn't have to be
             unique for a blob, and so there can be a one-to-many mapping of timestamp-to-blob. If a string, it is
             parsed using `dateparser.parse <https://dateparser.readthedocs.io/en/stable/#dateparser.parse>`_. If not
@@ -295,87 +297,89 @@ class Store:
 
         Idempotency, if required, is to be implemented externally.
         """
-        self._addblob(blob, time_utc, push=True)
+        self._addblob(blob, timestamp, push=True)
 
-    def addblobs(self, blobs: Iterable[bytes], times_utc: Optional[Iterable[Timestamp]] = None) -> None:
+    def addblobs(self, blobs: Iterable[bytes], timestamps: Optional[Iterable[Timestamp]] = None) -> None:
         """Add multiple blobs and also push them to the remote repository.
 
         For adding multiple blobs, this method is more efficient than multiple calls to :meth:`addblob`, as the commit
         and push are batched and done just once.
 
         :param blobs: iterable or sequence.
-        :param times_utc: optional iterable or sequence of the same length as `blobs`. If not specified, the current
+        :param timestamps: optional iterable or sequence of the same length as `blobs`. If not specified, the current
             time is used, and this will naturally increment just slightly for each subsequent blob. For further details,
-            refer to the `time_utc` parameter of :meth:`addblob`.
+            refer to the `timestamp` parameter of :meth:`addblob`.
 
-        In case the length of `blobs` and `times_utc` are somehow not identical, the shorter of the two lengths is used.
+        In case the length of `blobs` and `timestamps` are somehow not identical, the shorter of the two lengths is
+        used.
 
         Idempotency, if required, is to be implemented externally.
         """
         log.info('Adding blobs.')
-        if times_utc is None:
-            times_utc = itertools.repeat(None)
+        if timestamps is None:
+            timestamps = itertools.repeat(None)
 
         num_added = 0
-        for blob, time_utc in zip(blobs, times_utc):
-            self._addblob(blob, time_utc, push=False)
+        for blob, timestamp in zip(blobs, timestamps):
+            self._addblob(blob, timestamp, push=False)
             num_added += 1
 
         if num_added:
             self._commit_and_push_repo()
         log.info('Added %s blobs.', num_added)
 
-    def getblobs(self, start_utc: Optional[Timestamp] = -math.inf, end_utc: Optional[Timestamp] = math.inf,
+    def getblobs(self, start_time: Optional[Timestamp] = -math.inf, end_time: Optional[Timestamp] = math.inf,
                  *, pull: Optional[bool] = False) -> Iterator[Blob]:
         """Yield blobs matching the specified time range.
 
         This method currently requires listing and decoding the metadata for all files in the repository directory. From
         this perspective, calls to it should be consolidated.
 
-        :param start_utc: inclusive start time. Refer to the corresponding type annotation, and also to the `time_utc`
+        :param start_time: inclusive start time. Refer to the corresponding type annotation, and also to the `timestamp`
             parameter of :meth:`addblob`.
-        :param end_utc: inclusive end time. Refer to the corresponding type annotation, and also to the `time_utc`
+        :param end_time: inclusive end time. Refer to the corresponding type annotation, and also to the `timestamp`
             parameter of :meth:`addblob`.
         :param pull: pull first from remote repository. A pull should be avoided unless necessary.
-        :yields: instances of :class:`Blob`. If `start_utc` ≤ `end_utc`, blobs are yielded in ascending chronological
+        :yields: instances of :class:`Blob`. If `start_time` ≤ `end_time`, blobs are yielded in ascending chronological
             order sorted by their registered timestamp, otherwise in descending order.
 
         To pull without yielding any blobs, one can therefore call ``get_blobs(math.inf, math.inf, pull=True)``.
         """
         pull_state = 'with' if pull else 'without'
-        log.info('Getting blobs from "%s" to "%s" UTC %s repository pull.', start_utc, end_utc, pull_state)
+        log.info('Getting blobs from timestamp "%s" to "%s" %s repository pull.', start_time, end_time, pull_state)
 
-        def standardize_time_to_ns(time_utc: Timestamp, *, default: float) -> Union[int, float]:
-            if time_utc is None:
+        def standardize_time_to_ns(timestamp: Timestamp, *, default: float) -> Union[int, float]:
+            if timestamp is None:
                 return default
-            if isinstance(time_utc, float):
-                if math.isnan(time_utc):
+            if isinstance(timestamp, float):
+                if math.isnan(timestamp):
                     return default
-                if not math.isfinite(time_utc):
-                    return time_utc
-            return self._standardize_time_to_ns(time_utc)
+                if not math.isfinite(timestamp):
+                    return timestamp
+            return self._standardize_time_to_ns(timestamp)
 
-        # Note: Either one of start_utc and end_utc can rightfully be smaller.
-        start_utc = standardize_time_to_ns(start_utc, default=-math.inf)
-        end_utc = standardize_time_to_ns(end_utc, default=math.inf)
-        log.info('Getting blobs from %s to %s UTC %s repository pull.', start_utc, end_utc, pull_state)
+        # Note: Either one of start_time and end_time can rightfully be smaller.
+        start_time_ns = standardize_time_to_ns(start_time, default=-math.inf)
+        end_time_ns = standardize_time_to_ns(end_time, default=math.inf)
+        log.info('Getting blobs from timestamp (ns) %s to %s %s repository pull.', start_time_ns, end_time_ns,
+                 pull_state)
 
         if pull:
             self._pull_repo()
 
-        if start_utc <= end_utc:
+        if start_time_ns <= end_time_ns:
             order = 'ascending'
         else:
             order = 'descending'
-            start_utc, end_utc = end_utc, start_utc
+            start_time_ns, end_time_ns = end_time_ns, start_time_ns
 
         time_path_tuples = ((self._decode_name(path), path) for path in self._path.iterdir() if path.is_file())
-        time_path_tuples = ((t, p) for t, p in time_path_tuples if start_utc <= t <= end_utc)
+        time_path_tuples = ((t, p) for t, p in time_path_tuples if start_time_ns <= t <= end_time_ns)
         time_path_tuples = sorted(time_path_tuples, reverse=(order == 'descending'))  # type: ignore
         log.debug('Yielding %s blobs in %s chronological order.', len(time_path_tuples), order)  # type: ignore
 
-        for time_utc_ns, path in time_path_tuples:
-            log.debug('Yielding blob having timestamp %s and name %s.', time_utc_ns, path.name)
-            yield Blob(time_utc_ns, self._egress_blob(path.read_bytes()))
-            log.info('Yielded blob having timestamp %s and name %s.', time_utc_ns, path.name)
+        for timestamp_ns, path in time_path_tuples:
+            log.debug('Yielding blob having timestamp (ns) %s and name %s.', timestamp_ns, path.name)
+            yield Blob(timestamp_ns / 1e9, self._egress_blob(path.read_bytes()))
+            log.info('Yielded blob having timestamp (ns) %s and name %s.', timestamp_ns, path.name)
         log.info('Yielded %s blobs.', len(time_path_tuples))  # type: ignore
