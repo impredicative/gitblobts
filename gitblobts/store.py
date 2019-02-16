@@ -378,11 +378,11 @@ class Store:
 
         time_path_tuples = ((self._decode_name(path), path) for path in self._path.iterdir() if path.is_file())
         time_path_tuples = ((t, p) for t, p in time_path_tuples if start_time_ns <= t <= end_time_ns)
-        time_path_tuples = sorted(time_path_tuples, reverse=(order == 'descending'))  # type: ignore
-        log.debug('Yielding %s blobs in %s chronological order.', len(time_path_tuples), order)  # type: ignore
+        time_path_tuples = sorted(time_path_tuples, reverse=(order == 'descending'))
+        log.debug('Yielding %s blobs in %s chronological order.', len(time_path_tuples), order)
 
         for timestamp_ns, path in time_path_tuples:
             log.debug('Yielding blob having timestamp (ns) %s and name %s.', timestamp_ns, path.name)
             yield Blob(timestamp_ns / 1e9, self._egress_blob(path.read_bytes()))
             log.info('Yielded blob having timestamp (ns) %s and name %s.', timestamp_ns, path.name)
-        log.info('Yielded %s blobs.', len(time_path_tuples))  # type: ignore
+        log.info('Yielded %s blobs.', len(time_path_tuples))
